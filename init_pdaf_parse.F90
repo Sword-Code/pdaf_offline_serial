@@ -95,7 +95,7 @@ SUBROUTINE init_pdaf_parse()
   CALL parse(handle, type_3dvar)
   handle = 'type_opt'                ! Set solver type for 3D-Var
   CALL parse(handle, type_opt)
-  dim_cvec = dim_ens
+  !dim_cvec = dim_ens
   handle = 'dim_cvec'                ! Size of control vector for 3D-Var
   CALL parse(handle, dim_cvec)
   handle = 'mcols_cvec_ens'          ! multiplication factor for dimension of ensemble control vector

@@ -1,0 +1,1 @@
+arch=linux_ifort_impi
