@@ -147,7 +147,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
      WRITE (*, '(8x, a)') '--- write ensemble and state estimate'
 
-     ALLOCATE(field(ny, nx))
+     ALLOCATE(field(nz,ny, nx))
 
      ! Write analysis ensemble
      DO member = 1, dim_ens
