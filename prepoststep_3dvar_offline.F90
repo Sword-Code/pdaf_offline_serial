@@ -40,7 +40,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny, dim_cvec, Vmat_p
+       ONLY: nx, ny, nz, dim_cvec, Vmat_p
 
   IMPLICIT NONE
 
@@ -74,10 +74,10 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
   INTEGER :: i, j, member             ! counters
   LOGICAL, SAVE :: firsttime = .TRUE. ! Routine is called for first time?
   REAL :: invdim_ens                  ! Inverse ensemble size
-  REAL :: invdim_ensm1                ! Inverse of ensemble size minus 1
+!  REAL :: invdim_ensm1                ! Inverse of ensemble size minus 1
   REAL :: rmserror_est                ! estimated RMS error
   REAL, ALLOCATABLE :: variance(:)    ! model state variances
-  REAL, ALLOCATABLE :: field(:,:)     ! global model field
+  REAL, ALLOCATABLE :: field(:,:,:)     ! global model field
   CHARACTER(len=2) :: ensstr          ! String for ensemble member
   REAL :: fact                        ! Scaling factor
 
@@ -98,7 +98,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
   ! Initialize numbers
   rmserror_est  = 0.0
   invdim_ens    = 1.0 / REAL(dim_ens)  
-  invdim_ensm1  = 1.0 / REAL(dim_ens - 1)
+!  invdim_ensm1  = 1.0 / REAL(dim_ens - 1)
 
 
 ! **************************************************************
@@ -152,14 +152,16 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
      ! Write analysis ensemble
      DO member = 1, dim_ens
         DO j = 1, nx
-           field(1:ny, j) = ens_p(1 + (j-1)*ny : j*ny, member)
+            do i=1,ny
+                field(1:nz,i, j) = ens_p(1 + (j-1)*ny*nz+(i-1)*nz : (j-1)*ny*nz+i*nz, member)
+            end do
         END DO
 
         WRITE (ensstr, '(i2.2)') member
         OPEN(11, file = 'ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
  
         DO i = 1, ny
-           WRITE (11, *) field(i, :)
+           WRITE (11, *) field(1,i, :)
         END DO
 
         CLOSE(11)
@@ -167,13 +169,15 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
      ! Write analysis state
      DO j = 1, nx
-        field(1:ny, j) = state_p(1 + (j-1)*ny : j*ny)
+        do i=1,ny
+            field(1:nz,i, j) = state_p(1 + (j-1)*ny*nz+(i-1)*nz : (j-1)*ny*nz+i*nz)
+        end do
      END DO
 
      OPEN(11, file = 'state_ana.txt', status = 'replace')
  
      DO i = 1, ny
-        WRITE (11, *) field(i, :)
+        WRITE (11, *) field(1,i, :)
      END DO
 
      CLOSE(11)
