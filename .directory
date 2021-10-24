@@ -1,4 +1,6 @@
 [Dolphin]
-Timestamp=2021,10,18,15,43,54
+SortOrder=1
+SortRole=modificationtime
+Timestamp=2021,10,24,15,2,12
 Version=4
 ViewMode=1

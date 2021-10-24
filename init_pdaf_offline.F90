@@ -73,7 +73,7 @@ SUBROUTINE init_pdaf()
   screen      = 2  ! Write screen output (1) for output, (2) add timings
 
 ! *** Filter specific variables
-  filtertype = 6    ! Type of filter
+  filtertype = 13 !6    ! Type of filter
                     !   (1) SEIK
                     !   (2) EnKF
                     !   (3) LSEIK
@@ -81,7 +81,7 @@ SUBROUTINE init_pdaf()
                     !   (5) LETKF
                     !   (6) ESTKF
                     !   (7) LESTKF
-  dim_ens = 9       ! Size of ensemble for all ensemble filters
+  dim_ens = 1 !9       ! Size of ensemble for all ensemble filters
                     ! Number of EOFs to be used for SEEK
   subtype = 5       ! (5) Offline mode
   type_3dvar = 0    ! Type of 3D-Var method
@@ -114,10 +114,10 @@ SUBROUTINE init_pdaf()
                     !   This parameter has also to be set internally in PDAF_init.
   rank_analysis_enkf = 0   ! rank to be considered for inversion of HPH
                     ! in analysis of EnKF; (0) for analysis w/o eigendecomposition
-  type_opt = 0      ! Type of minimizer for 3DVar
+  type_opt = 1 !0      ! Type of minimizer for 3DVar
                     !   (1) LBFGS, (2) CG+, (3) plain CG
                     !   (12) CG+ parallel, (13) plain CG parallel
-  dim_cvec = dim_ens  ! dimension of control vector (parameterized part)
+  dim_cvec = 4 !dim_ens  ! dimension of control vector (parameterized part)
   mcols_cvec_ens = 1  ! Multiplication factor for ensenble control vector
   beta_3dvar = 0.5  ! Hybrid weight for hybrid 3D-Var
 

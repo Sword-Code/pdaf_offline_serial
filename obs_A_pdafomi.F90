@@ -164,7 +164,7 @@ CONTAINS
     USE PDAFomi, &
          ONLY: PDAFomi_gather_obs
     USE mod_assimilation, &
-         ONLY: nx, ny, filtertype, local_range
+         ONLY: nx, ny, nz, filtertype, local_range
 
     IMPLICIT NONE
 
@@ -255,10 +255,10 @@ CONTAINS
     ALLOCATE(thisobs%id_obs_p(1, dim_obs_p))
 
     cnt = 0
-    cnt0 = 0
+    cnt0 = 1 !0
     DO j = 1, nx
        DO i= 1, ny
-          cnt0 = cnt0 + 1
+          !cnt0 = cnt0 + 1
           IF (obs_field(i,j) > -999.0) THEN
              cnt = cnt + 1
              thisobs%id_obs_p(1, cnt) = cnt0
@@ -266,6 +266,7 @@ CONTAINS
              ocoord_p(1, cnt) = REAL(j)
              ocoord_p(2, cnt) = REAL(i)
           END IF
+          cnt0 = cnt0 + nz ! by sspada
        END DO
     END DO
 

@@ -24,7 +24,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   USE mod_assimilation, &
-       ONLY: nx, ny, dim_cvec, Vmat_p
+       ONLY: nx, ny, nz, dim_cvec, Vmat_p
 
   IMPLICIT NONE
 
@@ -41,7 +41,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
 ! *** local variables ***
   INTEGER :: i, j, member  ! Counters
-  REAL, ALLOCATABLE :: field(:,:)     ! global model field
+  REAL, ALLOCATABLE :: field(:,:,:)     ! global model field
   CHARACTER(len=2) :: ensstr          ! String for ensemble member
   REAL :: invdim_ens                  ! Inverse ensemble size
   REAL :: fact                        ! Scaling factor
@@ -61,7 +61,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   invdim_ens = 1.0 / REAL(dim_cvec)
 
   ! allocate memory for temporary fields
-  ALLOCATE(field(ny, nx))
+  ALLOCATE(field(nz, ny, nx))
 
   ! Allocate matrix holding B^1/2 (from mod_assimilation)
   ALLOCATE(Vmat_p(dim_p, dim_cvec))
@@ -76,10 +76,17 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      OPEN(11, file = '../inputs_offline/ens_'//TRIM(ensstr)//'.txt', status='old')
  
      DO i = 1, ny
-        READ (11, *) field(i, :)
+        READ (11, *) field(1,i, :)
      END DO
+     
+     do i=2,nz
+        field(i,:,:)=field(1,:,:)+i
+     end do
+     
      DO j = 1, nx
-        Vmat_p(1 + (j-1)*ny : j*ny, member) = field(1:ny, j)
+        do i=1, ny
+            Vmat_p(1 + (j-1)*ny*nz+(i-1)*nz : (j-1)*ny*nz+i*nz, member) = field(1:nz,i, j)            
+        end do
      END DO
 
      CLOSE(11)
