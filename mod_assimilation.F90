@@ -27,7 +27,7 @@ MODULE mod_assimilation
 
 ! *** Variables specific for offline tutorial example ***
 
-  INTEGER :: nx, ny, nz            ! Size of 3D grid
+  INTEGER :: nx, ny, nz, nvar            ! Size of 3D grid and number of variables
 
 ! *** Model- and data specific variables ***
 

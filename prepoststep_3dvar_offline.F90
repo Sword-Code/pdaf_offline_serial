@@ -40,7 +40,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, dim_cvec, Vmat_p
+       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p
 
   IMPLICIT NONE
 
@@ -71,13 +71,13 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 !EOP
 
 ! *** local variables ***
-  INTEGER :: i, j, member             ! counters
+  INTEGER :: i, j, k, member             ! counters
   LOGICAL, SAVE :: firsttime = .TRUE. ! Routine is called for first time?
   REAL :: invdim_ens                  ! Inverse ensemble size
 !  REAL :: invdim_ensm1                ! Inverse of ensemble size minus 1
   REAL :: rmserror_est                ! estimated RMS error
   REAL, ALLOCATABLE :: variance(:)    ! model state variances
-  REAL, ALLOCATABLE :: field(:,:,:)     ! global model field
+  REAL, ALLOCATABLE :: field(:,:,:,:)     ! global model field
   CHARACTER(len=2) :: ensstr          ! String for ensemble member
   REAL :: fact                        ! Scaling factor
 
@@ -147,37 +147,43 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
      WRITE (*, '(8x, a)') '--- write ensemble and state estimate'
 
-     ALLOCATE(field(nz,ny, nx))
+     ALLOCATE(field(nz, ny, nx, nvar))
 
      ! Write analysis ensemble
      DO member = 1, dim_ens
-        DO j = 1, nx
-            do i=1,ny
-                field(1:nz,i, j) = ens_p(1 + (j-1)*ny*nz+(i-1)*nz : (j-1)*ny*nz+i*nz, member)
-            end do
-        END DO
+        do k=1,nvar
+            DO j = 1, nx
+                do i=1,ny
+                    field(1:nz,i, j, k) =   ens_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
+                                            (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz, member)
+                end do
+            END DO
+        end do
 
         WRITE (ensstr, '(i2.2)') member
         OPEN(11, file = 'ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
  
         DO i = 1, ny
-           WRITE (11, *) field(1,i, :)
+           WRITE (11, *) field(1,i, :,1)
         END DO
 
         CLOSE(11)
      END DO
 
      ! Write analysis state
-     DO j = 1, nx
-        do i=1,ny
-            field(1:nz,i, j) = state_p(1 + (j-1)*ny*nz+(i-1)*nz : (j-1)*ny*nz+i*nz)
-        end do
-     END DO
+     do k=1, nvar
+        DO j = 1, nx
+            do i=1,ny
+                field(1:nz,i, j, k) =   state_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
+                                        (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz)
+            end do
+        END DO
+     end do
 
      OPEN(11, file = 'state_ana.txt', status = 'replace')
  
      DO i = 1, ny
-        WRITE (11, *) field(1,i, :)
+        WRITE (11, *) field(1,i, :,1)
      END DO
 
      CLOSE(11)

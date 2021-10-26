@@ -20,7 +20,7 @@
 SUBROUTINE cvt_pdaf(iter, dim_p, dim_cvec, v_p, Vv_p)
 
   USE mod_assimilation, &
-       ONLY: Vmat_p, nx, ny, nz, nvar
+       ONLY: Vmat_p
 
   IMPLICIT NONE
 

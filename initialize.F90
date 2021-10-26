@@ -21,7 +21,7 @@ SUBROUTINE initialize()
 !
 ! !USES:
   USE mod_assimilation, & ! Model variables
-       ONLY: dim_state_p, nx, ny, nz
+       ONLY: dim_state_p, nx, ny, nz, nvar
   USE mod_parallel, &     ! Parallelization variables
        ONLY: MPI_COMM_WORLD, init_parallel, finalize_parallel
 
@@ -33,8 +33,9 @@ SUBROUTINE initialize()
   nx = 36    ! Extent of grid in x-direction
   ny = 18    ! Extent of grid in y-direction
   nz = 10    ! Extent of grid in z-direction
-
-  dim_state_p   = nx * ny * nz ! State dimension (shared via MOD_OFFLINE)
+  nvar = 2   ! number of variables
+  
+  dim_state_p   = nx * ny * nz * nvar ! State dimension (shared via MOD_OFFLINE)
 
 
 
@@ -42,6 +43,7 @@ SUBROUTINE initialize()
   WRITE (*, '(1x, a)') 'INITIALIZE MODEL INFORMATION FOR PDAF OFFLINE MODE'
   WRITE (*, '(22x,a)') 'MODEL: 2D Offline Example for Tutorial'
   WRITE (*, *) 'Grid size:',nx,'x',ny,'x',nz
+  WRITE (*, *) 'Number of variables:',nvar
   WRITE (*, '(5x, a, i7)') &
        'Global model state dimension:', dim_state_p
 
