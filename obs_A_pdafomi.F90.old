@@ -214,7 +214,7 @@ CONTAINS
        WRITE (stepstr, '(i2)') step
     END IF
 
-    OPEN (12, file='data/sat.txt', status='old')
+    OPEN (12, file='../inputs_offline/obs.txt', status='old')
     DO i = 1, ny
        READ (12, *) obs_field(i, :)
     END DO
@@ -255,9 +255,10 @@ CONTAINS
     ALLOCATE(thisobs%id_obs_p(1, dim_obs_p))
 
     cnt = 0
-    cnt0 = 1
+    cnt0 = 1 !0
     DO j = 1, nx
        DO i= 1, ny
+          !cnt0 = cnt0 + 1
           IF (obs_field(i,j) > -999.0) THEN
              cnt = cnt + 1
              thisobs%id_obs_p(1, cnt) = cnt0
@@ -265,7 +266,7 @@ CONTAINS
              ocoord_p(1, cnt) = REAL(j)
              ocoord_p(2, cnt) = REAL(i)
           END IF
-          cnt0 = cnt0 + nz
+          cnt0 = cnt0 + nz ! by sspada
        END DO
     END DO
 
@@ -325,8 +326,8 @@ CONTAINS
 !!
   SUBROUTINE obs_op_A(dim_p, dim_obs, state_p, ostate)
 
-    USE mod_assimilation, &
-         ONLY: nx, ny, nz
+    USE PDAFomi, &
+         ONLY: PDAFomi_obs_op_gridpoint
 
     IMPLICIT NONE
 
@@ -335,10 +336,6 @@ CONTAINS
     INTEGER, INTENT(in) :: dim_obs               !< Dimension of full observed state (all observed fields)
     REAL, INTENT(in)    :: state_p(dim_p)        !< PE-local model state
     REAL, INTENT(inout) :: ostate(dim_obs)       !< Full observed state
-    
-! *** Local variables ***
-    
-    integer :: i, idx
 
 
 ! ******************************************************
@@ -347,14 +344,7 @@ CONTAINS
 
     IF (thisobs%doassim==1) THEN
        ! observation operator for observed grid point values
-       
-        do i=1, dim_obs
-            idx=thisobs%id_obs_p(1, i)
-            ostate(i)=state_p(idx + 3*nx*ny*nz) + state_p(idx + 8*nx*ny*nz) + &
-                        state_p(idx + 12*nx*ny*nz) + state_p(idx + 16*nx*ny*nz)
-            
-        end do
-       
+       CALL PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
     END IF
 
   END SUBROUTINE obs_op_A
@@ -463,8 +453,8 @@ CONTAINS
 !!
   SUBROUTINE obs_op_adj_A(dim_p, dim_obs, ostate, state_p)
 
-    USE mod_assimilation, &
-         ONLY: nx, ny, nz
+    USE PDAFomi, &
+         ONLY: PDAFomi_obs_op_adj_gridpoint
 
     IMPLICIT NONE
 
@@ -474,9 +464,6 @@ CONTAINS
     REAL, INTENT(in)    :: ostate(dim_obs)       !< Full observed state
     REAL, INTENT(inout) :: state_p(dim_p)        !< PE-local model state
 
-! *** Local variables ***
-    
-    integer :: i, idx
 
 ! ******************************************************
 ! *** Apply observation operator H on a state vector ***
@@ -484,17 +471,7 @@ CONTAINS
 
     IF (thisobs%doassim==1) THEN
        ! adjoint observation operator for observed grid point values
-       
-        state_p=0.0
-        do i=1, dim_obs
-            idx=thisobs%id_obs_p(1, i)
-            state_p(idx + 3*nx*ny*nz)=state_p(idx + 3*nx*ny*nz)+ostate(i)
-            state_p(idx + 8*nx*ny*nz)=state_p(idx + 8*nx*ny*nz)+ostate(i)
-            state_p(idx + 12*nx*ny*nz)=state_p(idx + 12*nx*ny*nz)+ostate(i)
-            state_p(idx + 16*nx*ny*nz)=state_p(idx + 16*nx*ny*nz)+ostate(i)
-            
-        end do
-       
+       CALL PDAFomi_obs_op_adj_gridpoint(thisobs, ostate, state_p)
     END IF
 
   END SUBROUTINE obs_op_adj_A

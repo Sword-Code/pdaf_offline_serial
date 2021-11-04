@@ -24,7 +24,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p
+       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p
 
   IMPLICIT NONE
 
@@ -42,8 +42,10 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! *** local variables ***
   INTEGER :: i, j, k, member  ! Counters
   REAL, ALLOCATABLE :: field(:,:,:,:)     ! global model field
-  REAL, ALLOCATABLE :: eof(:)     ! eof
-  REAL, ALLOCATABLE :: eoffield(:,:,:)     ! eof field
+  CHARACTER(len=2) :: ensstr          ! String for ensemble member
+  REAL :: invdim_ens                  ! Inverse ensemble size
+  REAL :: fact                        ! Scaling factor
+
 
 ! **********************
 ! *** INITIALIZATION ***
@@ -55,17 +57,47 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   WRITE (*, '(9x, a)') '--- read ensemble from files'
   WRITE (*, '(9x, a, i5)') '--- members in B^1/2:  ', dim_cvec
   
+  ! Initialize numbers 
+  invdim_ens = 1.0 / REAL(dim_cvec)
 
   ! allocate memory for temporary fields
   ALLOCATE(field(nz, ny, nx, nvar))
-  ALLOCATE(eof(nz))
-  ALLOCATE(eoffield(nz, ny, nx))
 
   ! Allocate matrix holding B^1/2 (from mod_assimilation)
-  ALLOCATE(Vmat_p(dim_eof_p, dim_cvec))
+  ALLOCATE(Vmat_p(dim_p, dim_cvec))
 
-  ! Allocate initial state
-  ALLOCATE(state3dvar_p(nz, ny, nx, nvar))
+
+! ********************************
+! *** Read ensemble from files ***
+! ********************************
+
+  DO member = 1, dim_cvec
+     WRITE (ensstr, '(i1)') member
+     OPEN(11, file = '../inputs_offline/ens_'//TRIM(ensstr)//'.txt', status='old')
+ 
+     DO i = 1, ny
+        READ (11, *) field(1, i, :, 1)
+     END DO
+     
+     do i=2,nz
+        field(i,:,:,1)=field(1,:,:,1)+i*member
+     end do
+     
+     do i=2,nvar
+        field(:,:,:,i)=field(:,:,:,1)+i
+     end do
+     
+     do k=1,nvar
+        DO j = 1, nx
+            do i=1, ny
+                Vmat_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
+                    (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz, member) = field(1:nz,i, j, k)            
+            end do
+        END DO
+     end do
+    
+     CLOSE(11)
+  END DO
 
 
 ! **********************************************
@@ -73,55 +105,33 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! **********************************************
 
   WRITE (*, '(9x, a)') 'Initialize B^1/2'
-  
-    OPEN(11, file = 'data/eof.txt', status='old')
-        DO member = 1, dim_cvec
-            READ (11, *) eof(:)
-            
-            do i=1,nx
-                do j=1,ny
-                    eoffield(:,j,i)=eof
-                end do
-            end do
-            
-            do j=1,nx
-                do i=1,ny
-                    Vmat_p(1 + (j-1)*ny*nz + (i-1)*nz : & 
-                        (j-1)*ny*nz + i*nz, member) = eoffield(1:nz,i, j)            
-                end do
-            end do
-        end do
-    
-    CLOSE(11)
+
+  ! Here, we simply use the scaled ensemble perturbations
+
+  ! Compute ensemble mean
+  state_p = 0.0
+  DO member = 1, dim_cvec
+     DO i = 1, dim_p
+        state_p(i) = state_p(i) + Vmat_p(i, member)
+     END DO
+  END DO
+  state_p(:) = invdim_ens * state_p(:)
+
+  ! Initialize ensemble perturbations
+  DO member = 1, dim_cvec
+     Vmat_p(:,member) = Vmat_p(:,member) - state_p(:)
+  END DO
+
+  fact = 1.0/SQRT(REAL(dim_cvec-1))
+
+  Vmat_p = Vmat_p * fact
 
 
 ! ******************************************
 ! *** Initialize ensemble array for PDAF ***
 ! ******************************************
 
-    OPEN(11, file = 'data/phyto.txt', status='old')
-        DO member = 1, nvar
-            READ (11, *) eof(:)
-            
-            do i=1,nx
-                do j=1,ny
-                    field(:,j,i,member)=eof
-                end do
-            end do
-        end do
-    CLOSE(11)
-            
-    do k=1,nvar
-        DO j = 1, nx
-            do i=1, ny
-                state_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
-                    (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz) = field(1:nz,i, j, k)            
-            end do
-        END DO
-    end do
-    
-    ens_p(:,1) = state_p(:)
-    state3dvar_p=field
+  ens_p(:,1) = state_p(:)
 
 
 ! ****************
@@ -129,7 +139,5 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! ****************
 
   DEALLOCATE(field)
-  DEALLOCATE(eof)
-  DEALLOCATE(eoffield)
 
 END SUBROUTINE init_3dvar_offline

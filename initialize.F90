@@ -21,7 +21,7 @@ SUBROUTINE initialize()
 !
 ! !USES:
   USE mod_assimilation, & ! Model variables
-       ONLY: dim_state_p, nx, ny, nz, nvar
+       ONLY: dim_state_p, nx, ny, nz, nvar, dim_eof_p
   USE mod_parallel, &     ! Parallelization variables
        ONLY: MPI_COMM_WORLD, init_parallel, finalize_parallel
 
@@ -30,13 +30,13 @@ SUBROUTINE initialize()
 !EOP
 
 ! *** Model specifications ***
-  nx = 36    ! Extent of grid in x-direction
-  ny = 18    ! Extent of grid in y-direction
-  nz = 10    ! Extent of grid in z-direction
-  nvar = 2   ! number of variables
+  nx = 1 !36    ! Extent of grid in x-direction
+  ny = 1 !18    ! Extent of grid in y-direction
+  nz = 196 !10    ! Extent of grid in z-direction
+  nvar = 17 !2   ! number of variables
   
   dim_state_p   = nx * ny * nz * nvar ! State dimension (shared via MOD_OFFLINE)
-
+  dim_eof_p = nx * ny * nz
 
 
 ! *** Screen output ***

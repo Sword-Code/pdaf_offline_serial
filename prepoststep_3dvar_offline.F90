@@ -40,7 +40,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p
+       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p
 
   IMPLICIT NONE
 
@@ -93,7 +93,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
   END IF
 
   ! Allocate fields
-  ALLOCATE(variance(dim_p))
+  ALLOCATE(variance(dim_eof_p))
 
   ! Initialize numbers
   rmserror_est  = 0.0
@@ -112,7 +112,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
   ! *** Compute sampled variances ***
   variance(:) = 0.0
   DO member = 1, dim_cvec
-     DO j = 1, dim_p
+     DO j = 1, dim_eof_p
         variance(j) = variance(j) &
              + Vmat_p(j,member) * Vmat_p(j,member)
      END DO
@@ -124,10 +124,10 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 ! ************************************************************
 
   ! total estimated RMS error
-  DO i = 1, dim_p
+  DO i = 1, dim_eof_p
      rmserror_est = rmserror_est + variance(i)
   ENDDO
-  rmserror_est = SQRT(rmserror_est / dim_p)
+  rmserror_est = SQRT(rmserror_est / dim_eof_p)
 
 
 ! *****************
@@ -149,6 +149,8 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
      ALLOCATE(field(nz, ny, nx, nvar))
 
+     
+if (.false.)
      ! Write analysis ensemble
      DO member = 1, dim_ens
         do k=1,nvar
@@ -169,6 +171,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
         CLOSE(11)
      END DO
+end if
 
      ! Write analysis state
      do k=1, nvar
@@ -182,8 +185,8 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 
      OPEN(11, file = 'state_ana.txt', status = 'replace')
  
-     DO i = 1, ny
-        WRITE (11, *) field(1,i, :,1)
+     DO i = 1, nvar
+        WRITE (11, *) field(1,1, :,i)
      END DO
 
      CLOSE(11)

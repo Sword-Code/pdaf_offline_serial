@@ -33,6 +33,9 @@ MODULE mod_assimilation
 
   INTEGER :: dim_state           ! Global model state dimension
   INTEGER :: dim_state_p         ! Model state dimension for PE-local domain
+  
+  INTEGER :: dim_eof_p         ! eof state dimension for PE-local domain
+  
   INTEGER, ALLOCATABLE :: local_dims(:)  ! Array for local state dimensions
 
   INTEGER :: dim_obs_p                    ! Process-local number of observations
@@ -184,6 +187,7 @@ MODULE mod_assimilation
   INTEGER, ALLOCATABLE :: id_lstate_in_pstate(:) ! Indices of local state vector in PE-local global state vector
   REAL, ALLOCATABLE    :: Vmat_p(:,:)            ! square-root of P for 3D-Var
   REAL, ALLOCATABLE    :: Vmat_ens_p(:,:)        ! square-root of P for ensemble 3D-Var
+  REAL, ALLOCATABLE    :: state3dvar_p(:,:,:,:)        ! initial state of the system
 
 !$OMP THREADPRIVATE(coords_l, id_lstate_in_pstate)
 
