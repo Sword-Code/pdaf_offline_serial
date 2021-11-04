@@ -1,1 +1,1 @@
-arch=linux_ifort_impi
+arch=linux_ifort_impi_debug

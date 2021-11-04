@@ -35,7 +35,7 @@ SUBROUTINE cvt_adj_pdaf(iter, dim_p, dim_cvec, Vv_p, v_p)
     real, allocatable :: Mv(:) !result of vertical operator
     real, allocatable :: totalchl(:,:,:)          !total chlorophyll
     real, allocatable :: field(:,:,:), field2(:,:,:,:) !chl field
-    integer :: i, j
+    integer :: i, j, k
     
     allocate(Mv(dim_eof_p))
     allocate(field(nz,ny,nx))
@@ -48,6 +48,15 @@ SUBROUTINE cvt_adj_pdaf(iter, dim_p, dim_cvec, Vv_p, v_p)
 ! *********************
 
     totalchl=state3dvar_p(:,:,:,4)+state3dvar_p(:,:,:,9)+state3dvar_p(:,:,:,13)+state3dvar_p(:,:,:,17)
+    
+    do k=1, nvar
+        DO j = 1, nx
+            do i=1,ny
+                field2(1:nz,i, j, k) =   Vv_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
+                                        (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz)
+            end do
+        END DO
+     end do
     
     field=0.0
     do i=1,nvar
@@ -81,5 +90,8 @@ SUBROUTINE cvt_adj_pdaf(iter, dim_p, dim_cvec, Vv_p, v_p)
     deallocate(field)
     deallocate(field2)
    deallocate(totalchl)
+   
+   !write(*,*) "adj Vv: ",  Vv_p
+   !write(*,*) "adj v: ",  v_p
 
 END SUBROUTINE cvt_adj_pdaf

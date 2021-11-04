@@ -150,7 +150,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
      ALLOCATE(field(nz, ny, nx, nvar))
 
      
-if (.false.)
+if (.false.) then
      ! Write analysis ensemble
      DO member = 1, dim_ens
         do k=1,nvar
@@ -182,17 +182,24 @@ end if
             end do
         END DO
      end do
-
+    
      OPEN(11, file = 'state_ana.txt', status = 'replace')
  
-     DO i = 1, nvar
-        WRITE (11, *) field(1,1, :,i)
-     END DO
+        DO i = 1, nvar
+            WRITE (11, *) field(:,1, 1,i)
+        END DO
+
+     CLOSE(11)
+     
+     OPEN(11, file = 'chl.txt', status = 'replace')
+ 
+        WRITE (11, *) field(:,1, 1,4) +field(:,1, 1,9) +field(:,1, 1, 13) +field(:,1, 1,17)
 
      CLOSE(11)
 
 
      DEALLOCATE(field)
+     
   END IF
 
 

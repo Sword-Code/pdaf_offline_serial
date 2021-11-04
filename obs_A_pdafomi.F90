@@ -327,6 +327,9 @@ CONTAINS
 
     USE mod_assimilation, &
          ONLY: nx, ny, nz
+         
+    USE PDAFomi_obs_f, & 
+        ONLY: PDAFomi_gather_obsstate
 
     IMPLICIT NONE
 
@@ -339,6 +342,7 @@ CONTAINS
 ! *** Local variables ***
     
     integer :: i, idx
+    real, ALLOCATABLE :: ostate_p(:)
 
 
 ! ******************************************************
@@ -348,13 +352,21 @@ CONTAINS
     IF (thisobs%doassim==1) THEN
        ! observation operator for observed grid point values
        
-        do i=1, dim_obs
+        ALLOCATE(ostate_p(thisobs%dim_obs_p))   
+       
+        do i=1, thisobs%dim_obs_p
             idx=thisobs%id_obs_p(1, i)
-            ostate(i)=state_p(idx + 3*nx*ny*nz) + state_p(idx + 8*nx*ny*nz) + &
+            ostate_p(i)=state_p(idx + 3*nx*ny*nz) + state_p(idx + 8*nx*ny*nz) + &
                         state_p(idx + 12*nx*ny*nz) + state_p(idx + 16*nx*ny*nz)
             
         end do
-       
+        
+        ! *** Global: Gather full observed state vector
+        CALL PDAFomi_gather_obsstate(thisobs, ostate_p, ostate)
+
+        ! *** Clean up
+        DEALLOCATE(ostate_p)
+        
     END IF
 
   END SUBROUTINE obs_op_A
@@ -486,12 +498,12 @@ CONTAINS
        ! adjoint observation operator for observed grid point values
        
         state_p=0.0
-        do i=1, dim_obs
+        do i=1, thisobs%dim_obs_p
             idx=thisobs%id_obs_p(1, i)
-            state_p(idx + 3*nx*ny*nz)=state_p(idx + 3*nx*ny*nz)+ostate(i)
-            state_p(idx + 8*nx*ny*nz)=state_p(idx + 8*nx*ny*nz)+ostate(i)
-            state_p(idx + 12*nx*ny*nz)=state_p(idx + 12*nx*ny*nz)+ostate(i)
-            state_p(idx + 16*nx*ny*nz)=state_p(idx + 16*nx*ny*nz)+ostate(i)
+            state_p(idx + 3*nx*ny*nz)=state_p(idx + 3*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + 8*nx*ny*nz)=state_p(idx + 8*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + 12*nx*ny*nz)=state_p(idx + 12*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + 16*nx*ny*nz)=state_p(idx + 16*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
             
         end do
        

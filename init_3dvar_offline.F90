@@ -24,7 +24,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p
+       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p, state3dvar_p
 
   IMPLICIT NONE
 
@@ -122,6 +122,12 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
     
     ens_p(:,1) = state_p(:)
     state3dvar_p=field
+    
+    OPEN(11, file = 'chl_init.txt', status = 'replace')
+ 
+        WRITE (11, *) field(:,1, 1,4) +field(:,1, 1,9) +field(:,1, 1, 13) +field(:,1, 1,17)
+
+    CLOSE(11)
 
 
 ! ****************

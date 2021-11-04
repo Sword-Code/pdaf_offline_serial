@@ -72,7 +72,7 @@ SUBROUTINE cvt_pdaf(iter, dim_p, dim_cvec, v_p, Vv_p)
         DO j = 1, nx
             do i=1, ny
                 Vv_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
-                    (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz) = field(1:nz,i, j, k)            
+                    (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz) = field2(1:nz,i, j, k)            
             end do
         END DO
     end do
@@ -84,5 +84,8 @@ SUBROUTINE cvt_pdaf(iter, dim_p, dim_cvec, v_p, Vv_p)
     deallocate(field)
     deallocate(field2)
    deallocate(totalchl)
+   
+   !write(*,*) "cvt v: ", v_p
+   !write(*,*) "cvt Vv: ", Vv_p
 
 END SUBROUTINE cvt_pdaf
