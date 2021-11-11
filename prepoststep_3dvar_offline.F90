@@ -100,6 +100,16 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
   invdim_ens    = 1.0 / REAL(dim_ens)  
 !  invdim_ensm1  = 1.0 / REAL(dim_ens - 1)
 
+!*****************************************************************************************
+!*** Cut off negative values ***
+!*******************************************
+
+    do i=1,dim_p
+        if (ens_p(i,1)<0.0) then 
+            ens_p(i,1)=0.0
+        end if
+    end do
+
 
 ! **************************************************************
 ! *** Perform prepoststep for 3D-Var in which dim_ens=1      ***
@@ -192,7 +202,7 @@ end if
      CLOSE(11)
      
      OPEN(11, file = 'chl.txt', status = 'replace')
- 
+        
         WRITE (11, *) field(:,1, 1,4) +field(:,1, 1,9) +field(:,1, 1, 13) +field(:,1, 1,17)
 
      CLOSE(11)

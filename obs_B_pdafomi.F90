@@ -164,7 +164,7 @@ CONTAINS
     USE PDAFomi, &
          ONLY: PDAFomi_gather_obs
     USE mod_assimilation, &
-         ONLY: nx, ny, filtertype, local_range
+         ONLY: nx, ny, nz, nvar, filtertype, local_range
 
     IMPLICIT NONE
 
@@ -214,7 +214,7 @@ CONTAINS
        WRITE (stepstr, '(i2)') step
     END IF
 
-    OPEN (12, file='../inputs_offline/obsB.txt', status='old')
+    OPEN (12, file='data/argo.txt', status='old')
     DO i = 1, ny
        READ (12, *) obs_field(i, :)
     END DO
