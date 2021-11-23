@@ -1,0 +1,4 @@
+# Ignore build file
+*.o
+*.mod
+

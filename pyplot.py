@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.netcdf as NC
 
-z=np.loadtxt('data/z.txt')
+z=np.loadtxt('data/init/z.txt')
 
 nz=z.size
 nvar=17
@@ -30,11 +30,11 @@ def readstate(infile):
         
     return np.reshape(flatstate, [nvar,nz])
 
-instate=readstate('data/phyto.txt')
-outstate=readstate('state_ana.txt')
+instate=readstate('data/forecast/phyto.txt')
+outstate=readstate('data/analysis/state_ana.txt')
 
-obs = np.loadtxt('data/sat.txt')
-eofs = np.loadtxt('data/eof.txt')
+obs = np.loadtxt('data/obs/sat.txt')
+eofs = np.loadtxt('data/init/eof.txt')
 stdev= np.linalg.norm(eofs, axis=0)
 
 chl=np.array([np.sum(instate[[3,8,12,16],:],axis=0),np.sum(outstate[[3,8,12,16],:],axis=0)])
@@ -65,15 +65,15 @@ def writenc(outfile,statepre, statepost):
             ncvar[0,:,0,0] = statepre[i,:]
             ncvar[1,:,0,0] = statepost[i,:]
 
-outfile = 'state_ana.nc'
+outfile = 'postproc/state_ana.nc'
 writenc(outfile,instate, outstate)
 
 
 fig,ax=plt.subplots()
-lineforcast=ax.plot(chl[0],z,"b",label='forecast')
-lineforcastdev=ax.plot(chl[0]+stdev,z,":b",label='forecast st.dev.')
+lineforcast,=ax.plot(chl[0],z,"b",label='forecast')
+lineforcastdev,=ax.plot(chl[0]+stdev,z,":b",label='forecast st.dev.')
 ax.plot(chl[0]-stdev,z,":b")
-lineanal=ax.plot(chl[1],z,"r",label='analysis')
+lineanal,=ax.plot(chl[1],z,"r",label='analysis')
 #ax.plot(chl[1]+stdev,z,":r")
 #ax.plot(chl[1]-stdev,z,":r")
 ax.plot(obs,[0.0],"^g")
@@ -83,7 +83,7 @@ ax.plot([obs+obsdev], [0.0], "|g")
 plt.ylim([400.0,-40.0])
 limx=plt.xlim()
 ax.plot(limx,[0.0,0.0],"k",linewidth=1)
-lineobs=ax.plot(obs,[0.0],"^g",label='obs')
+lineobs,=ax.plot(obs,[0.0],"^g",label='obs')
 ax.plot([obs-obsdev, obs+obsdev], [0.0,0.0], "g")
 ax.plot([obs-obsdev], [0.0], "|g")
 ax.plot([obs+obsdev], [0.0], "|g")
@@ -93,8 +93,8 @@ plt.title("Chl")
 plt.xlabel("Chl (g/m^3)")
 plt.ylabel("Depth (m)")
 
-ax.legend([lineforcast,lineforcastdev,lineobs,lineanal],['forecast','forecast st.dev.','obs','analysis'])
+plt.legend([lineforcast,lineforcastdev,lineobs,lineanal],['forecast','forecast st.dev.','obs','analysis'])
 
-plt.savefig("chl.png")
+plt.savefig("postproc/chl.png")
 
 plt.show()

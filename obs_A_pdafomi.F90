@@ -214,10 +214,8 @@ CONTAINS
        WRITE (stepstr, '(i2)') step
     END IF
 
-    OPEN (12, file='data/sat.txt', status='old')
-    DO i = 1, ny
-       READ (12, *) obs_field(i, :)
-    END DO
+    OPEN (12, file='data/obs/sat.txt', status='old')
+        READ (12, *) obs_field
     CLOSE (12)
 
 

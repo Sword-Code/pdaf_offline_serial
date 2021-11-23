@@ -40,7 +40,7 @@ SUBROUTINE prepoststep_3dvar_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p,
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p
+       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p, varindex
 
   IMPLICIT NONE
 
@@ -173,7 +173,7 @@ if (.false.) then
         end do
 
         WRITE (ensstr, '(i2.2)') member
-        OPEN(11, file = 'ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
+        OPEN(11, file = 'data/analysis/ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
  
         DO i = 1, ny
            WRITE (11, *) field(1,i, :,1)
@@ -193,7 +193,7 @@ end if
         END DO
      end do
     
-     OPEN(11, file = 'state_ana.txt', status = 'replace')
+     OPEN(11, file = 'data/analysis/state_ana.txt', status = 'replace')
  
         DO i = 1, nvar
             WRITE (11, *) field(:,1, 1,i)
@@ -201,9 +201,9 @@ end if
 
      CLOSE(11)
      
-     OPEN(11, file = 'chl.txt', status = 'replace')
+     OPEN(11, file = 'data/diag/chl.txt', status = 'replace')
         
-        WRITE (11, *) field(:,1, 1,4) +field(:,1, 1,9) +field(:,1, 1, 13) +field(:,1, 1,17)
+        WRITE (11, *) field(:,1, 1,varindex("P1_Chl")) +field(:,1, 1,varindex("P2_Chl")) +field(:,1, 1, varindex("P3_Chl")) +field(:,1, 1,varindex("P4_Chl"))
 
      CLOSE(11)
 

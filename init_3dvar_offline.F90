@@ -24,7 +24,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_cvec, Vmat_p, dim_eof_p, state3dvar_p
+       ONLY: nx, ny, nz, nvar, dim_eof_p, state3dvar_p, varindex
 
   IMPLICIT NONE
 
@@ -42,8 +42,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! *** local variables ***
   INTEGER :: i, j, k, member  ! Counters
   REAL, ALLOCATABLE :: field(:,:,:,:)     ! global model field
-  REAL, ALLOCATABLE :: eof(:)     ! eof
-  REAL, ALLOCATABLE :: eoffield(:,:,:)     ! eof field
+  REAL, ALLOCATABLE :: column(:)     ! tracer in water column
 
 ! **********************
 ! *** INITIALIZATION ***
@@ -52,17 +51,11 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   ! *** Read initial state and generate square root of B ***
   ! *** by reading the full ensemble on filter-PE 0      ***
   WRITE (*, '(/9x, a)') 'Initialize state and B^1/2 for 3D-Var'
-  WRITE (*, '(9x, a)') '--- read ensemble from files'
-  WRITE (*, '(9x, a, i5)') '--- members in B^1/2:  ', dim_cvec
   
 
   ! allocate memory for temporary fields
   ALLOCATE(field(nz, ny, nx, nvar))
-  ALLOCATE(eof(nz))
-  ALLOCATE(eoffield(nz, ny, nx))
-
-  ! Allocate matrix holding B^1/2 (from mod_assimilation)
-  ALLOCATE(Vmat_p(dim_eof_p, dim_cvec))
+  ALLOCATE(column(nz))
 
   ! Allocate initial state
   ALLOCATE(state3dvar_p(nz, ny, nx, nvar))
@@ -72,40 +65,22 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! *** Initialize square-root of P for 3D-Var ***
 ! **********************************************
 
-  WRITE (*, '(9x, a)') 'Initialize B^1/2'
-  
-    OPEN(11, file = 'data/eof.txt', status='old')
-        DO member = 1, dim_cvec
-            READ (11, *) eof(:)
-            
-            do i=1,nx
-                do j=1,ny
-                    eoffield(:,j,i)=eof
-                end do
-            end do
-            
-            do j=1,nx
-                do i=1,ny
-                    Vmat_p(1 + (j-1)*ny*nz + (i-1)*nz : & 
-                        (j-1)*ny*nz + i*nz, member) = eoffield(1:nz,i, j)            
-                end do
-            end do
-        end do
-    
-    CLOSE(11)
+    call read_eof_3dvar
 
 
 ! ******************************************
 ! *** Initialize ensemble array for PDAF ***
 ! ******************************************
 
-    OPEN(11, file = 'data/phyto.txt', status='old')
+    WRITE (*, '(/9x, a)') 'Initialize state for 3D-Var'
+
+    OPEN(11, file = 'data/forecast/phyto.txt', status='old')
         DO member = 1, nvar
-            READ (11, *) eof(:)
+            READ (11, *) column(:)
             
             do i=1,nx
                 do j=1,ny
-                    field(:,j,i,member)=eof
+                    field(:,j,i,member)=column
                 end do
             end do
         end do
@@ -123,9 +98,9 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
     ens_p(:,1) = state_p(:)
     state3dvar_p=field
     
-    OPEN(11, file = 'chl_init.txt', status = 'replace')
+    OPEN(11, file = 'data/diag/chl_init.txt', status = 'replace')
  
-        WRITE (11, *) field(:,1, 1,4) +field(:,1, 1,9) +field(:,1, 1, 13) +field(:,1, 1,17)
+        WRITE (11, *) field(:,1, 1,varindex("P1_Chl")) +field(:,1, 1,varindex("P2_Chl")) +field(:,1, 1, varindex("P3_Chl")) +field(:,1, 1,varindex("P4_Chl"))
 
     CLOSE(11)
 
@@ -135,7 +110,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! ****************
 
   DEALLOCATE(field)
-  DEALLOCATE(eof)
-  DEALLOCATE(eoffield)
+  DEALLOCATE(column)
+
 
 END SUBROUTINE init_3dvar_offline

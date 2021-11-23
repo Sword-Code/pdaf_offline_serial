@@ -76,7 +76,8 @@ OBJ_USER_3DVAR = init_3dvar_offline.o \
 		cvt_ens_pdaf.o \
 		cvt_adj_ens_pdaf.o \
 		cvt_pdaf.o \
-		cvt_adj_pdaf.o
+		cvt_adj_pdaf.o \
+		read_eof_3dvar.o
 
 # Full list of user-supplied routines for online modes
 OBJ_PDAF_USER = $(OBJ_USER_PDAFOMI) $(OBJ_USER_GEN) $(OBJ_USER_LOCAL) $(OBJ_USER_3DVAR)
@@ -122,7 +123,7 @@ cleanpdaf:
 	cd $(BASEDIR)/src; make clean
 
 cleandata:
-	rm -f ens*ana.txt state_ana.txt chl*.txt
+	rm -f data/analysis/*.txt data/diag/*.txt
 
 ######################################################
 # List arch files

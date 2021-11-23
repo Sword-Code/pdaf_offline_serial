@@ -20,7 +20,7 @@
 SUBROUTINE cvt_pdaf(iter, dim_p, dim_cvec, v_p, Vv_p)
 
   USE mod_assimilation, &
-       ONLY: Vmat_p, nx, ny, nz, nvar, dim_eof_p, state3dvar_p
+       ONLY: Vmat_p, nx, ny, nz, nvar, dim_eof_p, state3dvar_p, varindex
 
   IMPLICIT NONE
 
@@ -62,7 +62,8 @@ SUBROUTINE cvt_pdaf(iter, dim_p, dim_cvec, v_p, Vv_p)
 ! *** Compute biogeochemical operator ***
 ! *********************
 
-    totalchl=state3dvar_p(:,:,:,4)+state3dvar_p(:,:,:,9)+state3dvar_p(:,:,:,13)+state3dvar_p(:,:,:,17)
+    totalchl=state3dvar_p(:,:,:,varindex("P1_Chl"))+state3dvar_p(:,:,:,varindex("P2_Chl"))+ &
+                state3dvar_p(:,:,:,varindex("P3_Chl"))+state3dvar_p(:,:,:,varindex("P4_Chl")) 
     
     do i=1,nvar
         field2(:,:,:,i)=field/totalchl*state3dvar_p(:,:,:,i)

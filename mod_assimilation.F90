@@ -43,6 +43,7 @@ MODULE mod_assimilation
   INTEGER, ALLOCATABLE :: obs_index_p(:)  ! Vector holding state-vector indices of observations
   REAL, ALLOCATABLE    :: obs_f(:)        ! Vector holding full vector of observations
   REAL, ALLOCATABLE :: coords_obs_f(:,:)  ! Array for full observation coordinates
+  character(len=200), allocatable :: varnames(:)
 
 
 ! *** Below are the generic variables used for configuring PDAF ***
@@ -187,8 +188,27 @@ MODULE mod_assimilation
   INTEGER, ALLOCATABLE :: id_lstate_in_pstate(:) ! Indices of local state vector in PE-local global state vector
   REAL, ALLOCATABLE    :: Vmat_p(:,:)            ! square-root of P for 3D-Var
   REAL, ALLOCATABLE    :: Vmat_ens_p(:,:)        ! square-root of P for ensemble 3D-Var
-  REAL, ALLOCATABLE    :: state3dvar_p(:,:,:,:)        ! initial state of the system
+  REAL, ALLOCATABLE    :: state3dvar_p(:,:,:,:)        ! State of the system for 3dvar routines (e.g., BGC operator) 
 
 !$OMP THREADPRIVATE(coords_l, id_lstate_in_pstate)
+
+    contains
+    
+    integer function varindex(name)
+        implicit none
+        character(len=*), intent(in) :: name
+        
+        integer i
+        
+        do i=1,nvar
+            if (trim(name)==trim(varnames(i))) then
+                varindex=i
+                return
+            end if
+        end do
+        
+        stop "no name in varnames"
+        
+    end function
 
 END MODULE mod_assimilation

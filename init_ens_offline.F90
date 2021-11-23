@@ -29,7 +29,7 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny, Vmat_p, dim_cvec
+       ONLY: nx, ny
 
   IMPLICIT NONE
 
@@ -49,11 +49,8 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 !EOP
 
 ! *** local variables ***
-  INTEGER :: i, j, member             ! Counters
-  REAL, ALLOCATABLE :: field(:,:)     ! global model field
+  INTEGER :: member             ! Counters
   CHARACTER(len=2) :: ensstr          ! String for ensemble member
-  REAL :: invdim_ens                  ! Inverse ensemble size
-  REAL :: fact                        ! Scaling factor
 
 
 ! **********************
@@ -64,12 +61,6 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   WRITE (*, '(/9x, a)') 'Initialize state ensemble'
   WRITE (*, '(9x, a)') '--- read ensemble from files'
   WRITE (*, '(9x, a, i5)') '--- Ensemble size:  ', dim_ens
-  
-  ! Initialize numbers 
-  invdim_ens = 1.0 / REAL(dim_cvec)
-
-  ! allocate memory for temporary fields
-  ALLOCATE(field(ny, nx))
 
 
 ! ********************************
@@ -77,17 +68,12 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! ********************************
 
   DO member = 1, dim_ens
-     WRITE (ensstr, '(i1)') member
-     OPEN(11, file = '../inputs_offline/ens_'//TRIM(ensstr)//'.txt', status='old')
+    WRITE (ensstr, '(i2.2)') member
+    OPEN(11, file = 'data/forecast/ens_'//TRIM(ensstr)//'.txt', status='old')
+    
+        read(11,*) ens_p(:,member)
 
-     DO i = 1, ny
-        READ (11, *) field(i, :)
-     END DO
-     DO j = 1, nx
-        ens_p(1 + (j-1)*ny : j*ny, member) = field(1:ny, j)
-     END DO
-
-     CLOSE(11)
+    CLOSE(11)
   END DO
 
 
@@ -97,35 +83,9 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   IF (filtertype==13) THEN
      
-     WRITE (*, '(9x, a)') 'Initialize B^1/2 for 3D-Var'
-
-     ! Here, we simply use the scaled ensemble perturbations
-
-     ! Compute ensemble mean
-     state_p = 0.0
-     DO member = 1, dim_cvec
-        DO i = 1, dim_p
-           state_p(i) = state_p(i) + ens_p(i, member)
-        END DO
-     END DO
-     state_p(:) = invdim_ens * state_p(:)
-
-     ALLOCATE(Vmat_p(dim_p, dim_cvec))
-  
-     DO member = 1, dim_ens
-        Vmat_p(:,member) = ens_p(:,member) - state_p(:)
-     END DO
-
-     fact = 1.0/SQRT(REAL(dim_cvec-1))
-
-     Vmat_p = Vmat_p * fact
+     call read_eof_3dvar
+     
   END IF
 
-
-! ****************
-! *** clean up ***
-! ****************
-
-  DEALLOCATE(field)
 
 END SUBROUTINE init_ens_offline
