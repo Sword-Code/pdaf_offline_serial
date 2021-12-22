@@ -67,7 +67,7 @@ SUBROUTINE cvt_ens_pdaf(iter, dim_p, dim_ens, dim_cvec_ens, ens_p, cv_p, Vcv_p)
      ! Fill additional columns (if Vmat_ens_p holds multiple sets of localized ensembles)
      DO i = 2, mcols_cvec_ens
         DO member = (i-1)*dim_ens+1, i*dim_ens
-           Vmat_ens_p(:,member) = ens_p(:,member-(i-1)*dim_ens)
+           Vmat_ens_p(:,member) = Vmat_ens_p(:,member-(i-1)*dim_ens)
         END DO
      END DO
 

@@ -24,7 +24,7 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   USE mod_assimilation, &
-       ONLY: nx, ny, nz, nvar, dim_eof_p, state3dvar_p, varindex
+       ONLY: nx, ny, nz, nvar, state3dvar_p, varindex
 
   IMPLICIT NONE
 
@@ -40,9 +40,11 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   INTEGER, INTENT(inout) :: flag                   !< PDAF status flag
 
 ! *** local variables ***
-  INTEGER :: i, j, k, member  ! Counters
+  INTEGER :: i, j, k, member, ios  ! Counters
   REAL, ALLOCATABLE :: field(:,:,:,:)     ! global model field
   REAL, ALLOCATABLE :: column(:)     ! tracer in water column
+  REAL :: invdim_ens                   ! Inverse ensemble size
+  CHARACTER(len=2) :: ensstr          ! String for ensemble member
 
 ! **********************
 ! *** INITIALIZATION ***
@@ -73,27 +75,52 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! ******************************************
 
     WRITE (*, '(/9x, a)') 'Initialize state for 3D-Var'
+    
+    if (.false.) then
 
-    OPEN(11, file = 'data/forecast/phyto.txt', status='old')
-        DO member = 1, nvar
-            READ (11, *) column(:)
-            
-            do i=1,nx
-                do j=1,ny
-                    field(:,j,i,member)=column
+        OPEN(11, file = 'data/forecast/phyto.txt', status='old')
+            DO member = 1, nvar
+                READ (11, *) column(:)
+                
+                do i=1,nx
+                    do j=1,ny
+                        field(:,j,i,member)=column
+                    end do
                 end do
             end do
+        CLOSE(11)
+                
+        do k=1,nvar
+            DO j = 1, nx
+                do i=1, ny
+                    state_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
+                        (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz) = field(1:nz,i, j, k)            
+                end do
+            END DO
         end do
-    CLOSE(11)
+        
+    else
+        state_p=0.0
+        
+        DO member = 1, dim_ens
+            WRITE (ensstr, '(i2.2)') member
+            OPEN(11, file = 'data/forecast/ens_'//TRIM(ensstr)//'.txt', status='old', iostat=ios)
+                
+                if (ios/=0) stop "Error opening forecast ensemble file"
             
-    do k=1,nvar
-        DO j = 1, nx
-            do i=1, ny
-                state_p(1 + (k-1)*nx*ny*nz + (j-1)*ny*nz + (i-1)*nz : & 
-                    (k-1)*nx*ny*nz + (j-1)*ny*nz + i*nz) = field(1:nz,i, j, k)            
-            end do
+                read(11,*) ens_p(:,member)
+
+            CLOSE(11)
+            
+            state_p=state_p+ens_p(:,member)
         END DO
-    end do
+        
+        invdim_ens    = 1.0 / REAL(dim_ens)
+        state_p=state_p*invdim_ens
+        
+        field=reshape(state_p, (/nz, ny, nx, nvar/))
+        
+    end if
     
     ens_p(:,1) = state_p(:)
     state3dvar_p=field

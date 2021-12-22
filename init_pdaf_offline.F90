@@ -31,7 +31,7 @@ SUBROUTINE init_pdaf()
        filename, type_trans, type_sqrt, type_opt, type_3dvar, &
        dim_cvec, dim_cvec_ens, mcols_cvec_ens, beta_3dvar
   USE obs_A_pdafomi, &            ! Variables for observation type A
-       ONLY: assim_A, rms_obs_A
+       ONLY: assim_A!, rms_obs_A
   USE obs_B_pdafomi, &            ! Variables for observation type B
        ONLY: assim_B, rms_obs_B
   USE obs_C_pdafomi, &            ! Variables for observation type C
@@ -81,7 +81,7 @@ SUBROUTINE init_pdaf()
                     !   (5) LETKF
                     !   (6) ESTKF
                     !   (7) LESTKF
-  dim_ens = 1 !9       ! Size of ensemble for all ensemble filters
+  dim_ens = 10 !9       ! Size of ensemble for all ensemble filters
                     ! Number of EOFs to be used for SEEK
   subtype = 5       ! (5) Offline mode
   type_3dvar = 0    ! Type of 3D-Var method
@@ -132,7 +132,7 @@ SUBROUTINE init_pdaf()
   assim_C = .false.
 
 ! *** specifications for observations ***
-  rms_obs_A = 0.1 ! 0.5    ! Observation error standard deviation for observation A
+  !rms_obs_A = 0.1 ! 0.5    ! Observation error standard deviation for observation A
   rms_obs_B = 0.5    ! Observation error standard deviation for observation B
   rms_obs_C = 0.5    ! Observation error standard deviation for observation C
 
@@ -159,6 +159,8 @@ SUBROUTINE init_pdaf()
 ! *** This is optional, but useful ***
 
   call init_pdaf_parse()
+  
+  !if ((filtertype == 13).and.(type_3dvar == 0)) dim_ens=1
 
   ! Set size of control vector for ensemble 3D-Var
   dim_cvec_ens = dim_ens * mcols_cvec_ens

@@ -29,7 +29,7 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny
+       ONLY: nx, ny, nz, nvar, state3dvar_p, varindex
 
   IMPLICIT NONE
 
@@ -49,8 +49,9 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 !EOP
 
 ! *** local variables ***
-  INTEGER :: member             ! Counters
+  INTEGER :: member, ios             ! Counters
   CHARACTER(len=2) :: ensstr          ! String for ensemble member
+  REAL :: invdim_ens                   ! Inverse ensemble size
 
 
 ! **********************
@@ -61,21 +62,42 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
   WRITE (*, '(/9x, a)') 'Initialize state ensemble'
   WRITE (*, '(9x, a)') '--- read ensemble from files'
   WRITE (*, '(9x, a, i5)') '--- Ensemble size:  ', dim_ens
+  
+
+  ! Allocate initial state
+  ALLOCATE(state3dvar_p(nz, ny, nx, nvar))
 
 
 ! ********************************
 ! *** Read ensemble from files ***
 ! ********************************
-
-  DO member = 1, dim_ens
-    WRITE (ensstr, '(i2.2)') member
-    OPEN(11, file = 'data/forecast/ens_'//TRIM(ensstr)//'.txt', status='old')
     
-        read(11,*) ens_p(:,member)
+    state_p=0.0
+    DO member = 1, dim_ens
+        WRITE (ensstr, '(i2.2)') member
+        OPEN(11, file = 'data/forecast/ens_'//TRIM(ensstr)//'.txt', status='old', iostat=ios)
+            
+            if (ios/=0) stop "Error opening forecast ensemble file"
+            
+            read(11,*) ens_p(:,member)
+
+        CLOSE(11)
+        
+        state_p=state_p+ens_p(:,member)
+    END DO
+    
+    invdim_ens    = 1.0 / REAL(dim_ens)
+    state_p=state_p*invdim_ens
+    
+    state3dvar_p=reshape(state_p, (/nz, ny, nx, nvar/))
+        
+    OPEN(11, file = 'data/diag/chl_init.txt', status = 'replace')
+ 
+        WRITE (11, *) state3dvar_p(:,1, 1,varindex("P1_Chl")) + state3dvar_p(:,1, 1,varindex("P2_Chl")) + & 
+            state3dvar_p(:,1, 1, varindex("P3_Chl")) + state3dvar_p(:,1, 1,varindex("P4_Chl"))
 
     CLOSE(11)
-  END DO
-
+    
 
 ! *****************************************************
 ! *** Initialize square-root of P for hybrid 3D-Var ***
@@ -83,9 +105,8 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   IF (filtertype==13) THEN
      
-     call read_eof_3dvar
-     
-  END IF
+    call read_eof_3dvar
 
+  END IF
 
 END SUBROUTINE init_ens_offline

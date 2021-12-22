@@ -40,7 +40,7 @@ SUBROUTINE prepoststep_ens_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 !
 ! !USES:
   USE mod_assimilation, &
-       ONLY: nx, ny
+       ONLY: nx, ny, nz, nvar
 
   IMPLICIT NONE
 
@@ -159,37 +159,34 @@ SUBROUTINE prepoststep_ens_offline(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
      WRITE (*, '(8x, a)') '--- write ensemble and state estimate'
 
-     ALLOCATE(field(ny, nx))
+     ALLOCATE(field(nx*ny*nz, nvar))
 
      ! Write analysis ensemble
      DO member = 1, dim_ens
-        DO j = 1, nx
-           field(1:ny, j) = ens_p(1 + (j-1)*ny : j*ny, member)
-        END DO
-
+     
+        field=reshape(ens_p(:,member),(/nx*ny*nz, nvar/))
         WRITE (ensstr, '(i2.2)') member
-        OPEN(11, file = 'ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
+        
+        OPEN(11, file = 'data/analysis/ens_'//TRIM(ensstr)//'_ana.txt', status = 'replace')
  
-        DO i = 1, ny
-           WRITE (11, *) field(i, :)
-        END DO
+            DO i = 1, nvar
+                WRITE (11, *) field(:,i)
+            END DO
 
         CLOSE(11)
+     
      END DO
 
      ! Write analysis state
-     DO j = 1, nx
-        field(1:ny, j) = state_p(1 + (j-1)*ny : j*ny)
-     END DO
+     field=reshape(state_p, (/nx*ny*nz, nvar/))
 
-     OPEN(11, file = 'state_ana.txt', status = 'replace')
+     OPEN(11, file = 'data/analysis/state_ana.txt', status = 'replace')
  
-     DO i = 1, ny
-        WRITE (11, *) field(i, :)
-     END DO
+        DO i = 1, nvar
+            WRITE (11, *) field(:,i)
+        END DO
 
      CLOSE(11)
-
 
      DEALLOCATE(field)
   END IF

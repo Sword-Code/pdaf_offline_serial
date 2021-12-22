@@ -63,7 +63,7 @@ MODULE obs_A_pdafomi
 
   ! Variables which are inputs to the module (usually set in init_pdaf)
   LOGICAL :: assim_A        !< Whether to assimilate this data type
-  REAL    :: rms_obs_A      !< Observation error standard deviation (for constant errors)
+  !REAL    :: rms_obs_A      !< Observation error standard deviation (for constant errors)
 
   ! One can declare further variables, e.g. for file names which can
   ! be use-included in init_pdaf() and initialized there.
@@ -180,6 +180,7 @@ CONTAINS
     REAL, ALLOCATABLE :: ocoord_p(:,:)   ! PE-local observation coordinates 
     INTEGER :: cnt, cnt0                 ! Counters
     REAL, ALLOCATABLE :: obs_field(:,:)  ! Observation field read from file
+    REAL, ALLOCATABLE :: std_field(:,:)  ! Observation std field read from file
     CHARACTER(len=2) :: stepstr          ! String for time step
 
 
@@ -207,6 +208,7 @@ CONTAINS
 
     ! Read observation field from file
     ALLOCATE(obs_field(ny, nx))
+    ALLOCATE(std_field(ny, nx))
 
     IF (step<10) THEN
        WRITE (stepstr, '(i1)') step
@@ -216,6 +218,10 @@ CONTAINS
 
     OPEN (12, file='data/obs/sat.txt', status='old')
         READ (12, *) obs_field
+    CLOSE (12)
+    
+    OPEN (12, file='data/obs/sat_std.txt', status='old')
+        READ (12, *) std_field
     CLOSE (12)
 
 
@@ -260,6 +266,7 @@ CONTAINS
              cnt = cnt + 1
              thisobs%id_obs_p(1, cnt) = cnt0
              obs_p(cnt) = obs_field(i, j)
+             ivar_obs_p(cnt) = 1.0 / std_field(i, j)**2
              ocoord_p(1, cnt) = REAL(j)
              ocoord_p(2, cnt) = REAL(i)
           END IF
@@ -274,7 +281,7 @@ CONTAINS
 
     ! *** Set inverse observation error variances ***
 
-    ivar_obs_p(:) = 1.0 / (rms_obs_A*rms_obs_A)
+    !ivar_obs_p(:) = 1.0 / (rms_obs_A*rms_obs_A)
 
 
 ! ****************************************

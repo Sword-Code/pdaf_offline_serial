@@ -23,7 +23,7 @@ SUBROUTINE init_pdaf_parse()
        srange, int_rediag, filename, type_trans, type_sqrt, &
        type_opt, mcols_cvec_ens, dim_cvec, beta_3dvar, type_3dvar
   USE obs_A_pdafomi, &    ! Variables for observation type A
-       ONLY: assim_A, rms_obs_A
+       ONLY: assim_A!, rms_obs_A
   USE obs_B_pdafomi, &    ! Variables for observation type B
        ONLY: assim_B, rms_obs_B
   USE obs_C_pdafomi, &    ! Variables for observation type C
@@ -55,8 +55,8 @@ SUBROUTINE init_pdaf_parse()
   CALL parse(handle, assim_B)
   handle = 'assim_C'                 ! Whether to assimilation observation type C
   CALL parse(handle, assim_C)
-  handle = 'rms_obs_A'               ! Assumed uniform RMS error of the observations type A
-  CALL parse(handle, rms_obs_A)
+  !handle = 'rms_obs_A'               ! Assumed uniform RMS error of the observations type A
+  !CALL parse(handle, rms_obs_A)
   handle = 'rms_obs_B'               ! Assumed uniform RMS error of the observations type B
   CALL parse(handle, rms_obs_B)
   handle = 'rms_obs_C'               ! Assumed uniform RMS error of the observations type C
