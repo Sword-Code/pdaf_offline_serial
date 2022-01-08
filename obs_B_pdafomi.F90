@@ -63,7 +63,7 @@ MODULE obs_B_pdafomi
 
   ! Variables which are inputs to the module (usually set in init_pdaf)
   LOGICAL :: assim_B        !< Whether to assimilate this data type
-  REAL    :: rms_obs_B      !< Observation error standard deviation (for constant errors)
+  !REAL    :: rms_obs_B      !< Observation error standard deviation (for constant errors)
 
   ! One can declare further variables, e.g. for file names which can
   ! be use-included in init_pdaf() and initialized there.
@@ -173,10 +173,11 @@ CONTAINS
     INTEGER, INTENT(inout) :: dim_obs    !< Dimension of full observation vector
 
 ! *** Local variables ***
-    INTEGER :: i, j                      ! Counters
+    INTEGER :: i, j, k                      ! Counters
     INTEGER :: cnt, cnt0                 ! Counters
     INTEGER :: dim_obs_p                 ! Number of process-local observations
-    REAL, ALLOCATABLE :: obs_field(:,:)  ! Observation field read from file
+    REAL, ALLOCATABLE :: obs_field(:,:,:)  ! Observation field read from file
+    REAL, ALLOCATABLE :: std_field(:,:,:)  ! Observation std field read from file
     REAL, ALLOCATABLE :: obs_p(:)        ! PE-local observation vector
     REAL, ALLOCATABLE :: ivar_obs_p(:)   ! PE-local inverse observation error variance
     REAL, ALLOCATABLE :: ocoord_p(:,:)   ! PE-local observation coordinates 
@@ -206,7 +207,8 @@ CONTAINS
 ! **********************************
 
     ! Read observation field from file
-    ALLOCATE(obs_field(ny, nx))
+    ALLOCATE(obs_field(nz, ny, nx))
+    ALLOCATE(std_field(nz, ny, nx))
 
     IF (step<10) THEN
        WRITE (stepstr, '(i1)') step
@@ -215,9 +217,11 @@ CONTAINS
     END IF
 
     OPEN (12, file='data/obs/argo.txt', status='old')
-    DO i = 1, ny
-       READ (12, *) obs_field(i, :)
-    END DO
+       READ (12, *) obs_field
+    CLOSE (12)
+    
+    OPEN (12, file='data/obs/argo_std.txt', status='old')
+       READ (12, *) std_field
     CLOSE (12)
 
 
@@ -231,7 +235,9 @@ CONTAINS
     cnt = 0
     DO j = 1, nx
        DO i= 1, ny
-          IF (obs_field(i,j) > -999.0) cnt = cnt + 1
+            do k=1,nz
+                IF (obs_field(k,i,j) > -999.0) cnt = cnt + 1
+            end do
        END DO
     END DO
     dim_obs_p = cnt
@@ -247,7 +253,7 @@ CONTAINS
     ! Allocate process-local observation arrays
     ALLOCATE(obs_p(dim_obs_p))
     ALLOCATE(ivar_obs_p(dim_obs_p))
-    ALLOCATE(ocoord_p(2, dim_obs_p))
+    ALLOCATE(ocoord_p(3, dim_obs_p))
 
     ! Allocate process-local index array
     ! This array has a many rows as required for the observation operator
@@ -258,14 +264,18 @@ CONTAINS
     cnt0 = 0
     DO j = 1, nx
        DO i= 1, ny
-          cnt0 = cnt0 + 1
-          IF (obs_field(i,j) > -999.0) THEN
-             cnt = cnt + 1
-             thisobs%id_obs_p(1, cnt) = cnt0
-             obs_p(cnt) = obs_field(i, j)
-             ocoord_p(1, cnt) = REAL(j)
-             ocoord_p(2, cnt) = REAL(i)
-          END IF
+            do k=1, nz
+                cnt0 = cnt0 + 1
+                IF (obs_field(k, i,j) > -999.0) THEN
+                    cnt = cnt + 1
+                    thisobs%id_obs_p(1, cnt) = cnt0
+                    obs_p(cnt) = obs_field(k, i, j)
+                    ivar_obs_p(cnt) = 1.0 / std_field(k, i, j)**2
+                    ocoord_p(1, cnt) = REAL(j)
+                    ocoord_p(2, cnt) = REAL(i)
+                    ocoord_p(3, cnt) = REAL(k)
+                END IF
+            end do|
        END DO
     END DO
 
@@ -276,7 +286,7 @@ CONTAINS
 
     ! *** Set inverse observation error variances ***
 
-    ivar_obs_p(:) = 1.0 / (rms_obs_B*rms_obs_B)
+    !ivar_obs_p(:) = 1.0 / (rms_obs_B*rms_obs_B)
 
 
 ! ****************************************
@@ -324,9 +334,12 @@ CONTAINS
 !! The routine is called by all filter processes.
 !!
   SUBROUTINE obs_op_B(dim_p, dim_obs, state_p, ostate)
-
-    USE PDAFomi, &
-         ONLY: PDAFomi_obs_op_gridpoint
+         
+    USE mod_assimilation, &
+        ONLY: nx, ny, nz, varindex
+         
+    USE PDAFomi_obs_f, & 
+        ONLY: PDAFomi_gather_obsstate
 
     IMPLICIT NONE
 
@@ -336,6 +349,10 @@ CONTAINS
     REAL, INTENT(in)    :: state_p(dim_p)        !< PE-local model state
     REAL, INTENT(inout) :: ostate(dim_obs)       !< Full observed state
 
+! *** Local variables ***
+    
+   integer :: i, idx
+   real, ALLOCATABLE :: ostate_p(:)
 
 ! ******************************************************
 ! *** Apply observation operator H on a state vector ***
@@ -343,7 +360,24 @@ CONTAINS
 
     IF (thisobs%doassim==1) THEN
        ! observation operator for observed grid point values
-       CALL PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
+       
+        ALLOCATE(ostate_p(thisobs%dim_obs_p))   
+       
+        do i=1, thisobs%dim_obs_p
+            idx=thisobs%id_obs_p(1, i)
+            ostate_p(i)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)
+            
+        end do
+        
+        ! *** Global: Gather full observed state vector
+        CALL PDAFomi_gather_obsstate(thisobs, ostate_p, ostate)
+
+        ! *** Clean up
+        DEALLOCATE(ostate_p)
+       
     END IF
 
   END SUBROUTINE obs_op_B
@@ -452,8 +486,8 @@ CONTAINS
 !!
   SUBROUTINE obs_op_adj_B(dim_p, dim_obs, ostate, state_p)
 
-    USE PDAFomi, &
-         ONLY: PDAFomi_obs_op_adj_gridpoint
+    USE mod_assimilation, &
+         ONLY: nx, ny, nz, varindex
 
     IMPLICIT NONE
 
@@ -463,6 +497,9 @@ CONTAINS
     REAL, INTENT(in)    :: ostate(dim_obs)       !< Full observed state
     REAL, INTENT(inout) :: state_p(dim_p)        !< PE-local model state
 
+! *** Local variables ***
+    
+    integer :: i, idx
 
 ! ******************************************************
 ! *** Apply observation operator H on a state vector ***
@@ -470,7 +507,16 @@ CONTAINS
 
     IF (thisobs%doassim==1) THEN
        ! adjoint observation operator for observed grid point values
-       CALL PDAFomi_obs_op_adj_gridpoint(thisobs, ostate, state_p)
+       
+        state_p=0.0
+        do i=1, thisobs%dim_obs_p
+            idx=thisobs%id_obs_p(1, i)
+            state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)           
+        end do
+       
     END IF
 
   END SUBROUTINE obs_op_adj_B

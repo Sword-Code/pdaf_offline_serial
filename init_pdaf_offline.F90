@@ -33,7 +33,7 @@ SUBROUTINE init_pdaf()
   USE obs_A_pdafomi, &            ! Variables for observation type A
        ONLY: assim_A!, rms_obs_A
   USE obs_B_pdafomi, &            ! Variables for observation type B
-       ONLY: assim_B, rms_obs_B
+       ONLY: assim_B!, rms_obs_B
   USE obs_C_pdafomi, &            ! Variables for observation type C
        ONLY: assim_C, rms_obs_C
 
@@ -133,7 +133,7 @@ SUBROUTINE init_pdaf()
 
 ! *** specifications for observations ***
   !rms_obs_A = 0.1 ! 0.5    ! Observation error standard deviation for observation A
-  rms_obs_B = 0.5    ! Observation error standard deviation for observation B
+  !rms_obs_B = 0.5    ! Observation error standard deviation for observation B
   rms_obs_C = 0.5    ! Observation error standard deviation for observation C
 
 ! *** Localization settings

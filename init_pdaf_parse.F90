@@ -25,7 +25,7 @@ SUBROUTINE init_pdaf_parse()
   USE obs_A_pdafomi, &    ! Variables for observation type A
        ONLY: assim_A!, rms_obs_A
   USE obs_B_pdafomi, &    ! Variables for observation type B
-       ONLY: assim_B, rms_obs_B
+       ONLY: assim_B!, rms_obs_B
   USE obs_C_pdafomi, &    ! Variables for observation type C
        ONLY: assim_C, rms_obs_C
 
@@ -57,8 +57,8 @@ SUBROUTINE init_pdaf_parse()
   CALL parse(handle, assim_C)
   !handle = 'rms_obs_A'               ! Assumed uniform RMS error of the observations type A
   !CALL parse(handle, rms_obs_A)
-  handle = 'rms_obs_B'               ! Assumed uniform RMS error of the observations type B
-  CALL parse(handle, rms_obs_B)
+  !handle = 'rms_obs_B'               ! Assumed uniform RMS error of the observations type B
+  !CALL parse(handle, rms_obs_B)
   handle = 'rms_obs_C'               ! Assumed uniform RMS error of the observations type C
   CALL parse(handle, rms_obs_C)
 
