@@ -331,7 +331,7 @@ CONTAINS
   SUBROUTINE obs_op_A(dim_p, dim_obs, state_p, ostate)
 
     USE mod_assimilation, &
-         ONLY: nx, ny, nz
+         ONLY: nx, ny, nz, varindex
          
     USE PDAFomi_obs_f, & 
         ONLY: PDAFomi_gather_obsstate
@@ -361,8 +361,10 @@ CONTAINS
        
         do i=1, thisobs%dim_obs_p
             idx=thisobs%id_obs_p(1, i)
-            ostate_p(i)=state_p(idx + 3*nx*ny*nz) + state_p(idx + 8*nx*ny*nz) + &
-                        state_p(idx + 12*nx*ny*nz) + state_p(idx + 16*nx*ny*nz)
+            ostate_p(i)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz) + &
+                        state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)
             
         end do
         
@@ -481,7 +483,7 @@ CONTAINS
   SUBROUTINE obs_op_adj_A(dim_p, dim_obs, ostate, state_p)
 
     USE mod_assimilation, &
-         ONLY: nx, ny, nz
+         ONLY: nx, ny, nz, varindex
 
     IMPLICIT NONE
 
@@ -505,10 +507,10 @@ CONTAINS
         state_p=0.0
         do i=1, thisobs%dim_obs_p
             idx=thisobs%id_obs_p(1, i)
-            state_p(idx + 3*nx*ny*nz)=state_p(idx + 3*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + 8*nx*ny*nz)=state_p(idx + 8*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + 12*nx*ny*nz)=state_p(idx + 12*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + 16*nx*ny*nz)=state_p(idx + 16*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+            state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
             
         end do
        
