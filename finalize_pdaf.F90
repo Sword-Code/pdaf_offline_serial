@@ -16,6 +16,9 @@ SUBROUTINE finalize_pdaf()
 ! !USES:
   USE mod_parallel, &
        ONLY: mype_world
+       
+    use mod_assimilation, &
+        only: varnames
 
   IMPLICIT NONE    
   
@@ -28,6 +31,9 @@ SUBROUTINE finalize_pdaf()
 
 ! *** Print PDAF timings onto screen ***
   IF (mype_world==0) CALL PDAF_print_info(3)
+  
+  ! Deallocate model arrays
+  deallocate(varnames)
 
   ! Deallocate PDAF arrays
   CALL PDAF_deallocate()

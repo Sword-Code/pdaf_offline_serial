@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.netcdf as NC
 import sys
+import glob
+
+DrawEns=False
 
 z=np.loadtxt('data/init/z.txt')
 
@@ -21,14 +24,18 @@ for line in lines:
             
 nz=z.size
 
-ens_size=10
-DrawForecastEns=False
+#ens_size=10
+ens_size=len(glob.glob("data/analysis/ens_??_ana.txt"))
 
 secs=(31+29+15)*24*60*60
 
-def readstate(infile):
-
-    flatstate=np.zeros([nz*nvar])
+def readstate(infile, dimensions):
+    
+    statesize=1
+    for dimension in dimensions:
+        statesize*=dimension
+    
+    flatstate=np.zeros([statesize])
 
     with open(infile) as f:
         lines = f.readlines()
@@ -40,34 +47,47 @@ def readstate(infile):
                 flatstate[c]=float(number)
                 c+=1
                 
-    if not c==nz*nvar:
+    if not c==statesize:
         print("ERROR with ", infile," size! c=",c)
         sys.exit(1)
         
-    return np.reshape(flatstate, [nvar,nz])
+    return np.reshape(flatstate, dimensions)
 
-#instate=readstate('data/forecast/phyto.txt')
-instate_ens=np.zeros([ens_size,nvar,nz])
-for i in range(ens_size):
-    instate_ens[i]=readstate('data/forecast/ens_{:02d}.txt'.format(i+1))
-    
 chlindexes=[variables.index("P1_Chl"),variables.index("P2_Chl"),variables.index("P3_Chl"),variables.index("P4_Chl")]
 
 def ens2state(ensemble):
     chl=np.sum(ensemble[:,chlindexes,:],axis=1)
     return np.mean(ensemble,axis=0), np.mean(chl,axis=0), np.std(chl, axis=0, ddof=1), chl
 
-instate, inchl, instd, inchl_ens = ens2state(instate_ens)
-outstate=readstate('data/analysis/state_ana.txt')
+if ens_size:
+    instate_ens=np.zeros([ens_size,nvar,nz])
+    for i in range(ens_size):
+        instate_ens[i]=readstate('data/forecast/ens_{:02d}.txt'.format(i+1), [nvar,nz])
+
+    instate, inchl, instd, inchl_ens = ens2state(instate_ens)
     
+    outstate_ens=np.zeros([ens_size,nvar,nz])
+    for i in range(ens_size):
+        outstate_ens[i]=readstate('data/analysis/ens_{:02d}.txt'.format(i+1), [nvar,nz])
 
-obs = np.loadtxt('data/obs/sat.txt')
-obsdev = np.loadtxt('data/obs/sat_std.txt')
+    outstate, outchl, outstd, outchl_ens = ens2state(outstate_ens)
+
+else:
+    instate=readstate('data/diag/state_init.txt', [nvar,nz])
+    inchl=np.sum(instate[chlindexes,:],axis=0)
+    
+    outstate=readstate('data/analysis/state_ana.txt', [nvar,nz])
+    outchl=np.sum(outstate[chlindexes,:],axis=0)
+    
+sat = np.loadtxt('data/obs/sat.txt')
+sat_std = np.loadtxt('data/obs/sat_std.txt')
 eofs = np.loadtxt('data/init/eof.txt')
-stdev= np.linalg.norm(eofs, axis=0)
+climstd= np.linalg.norm(eofs, axis=0)
 
-chl=np.array([inchl, np.sum(outstate[chlindexes,:],axis=0)])
+chl=np.array([inchl, outchl])
 
+argo =readstate('data/obs/argo.txt', [1,nz]) 
+argo_std = readstate('data/obs/argo_std.txt', [1,nz])
 
 def writenc(outfile,statepre, statepost):
     with NC.netcdf_file(outfile,"w") as ncOUT:
@@ -97,46 +117,91 @@ def writenc(outfile,statepre, statepost):
 outfile = 'postproc/state_ana.nc'
 writenc(outfile,instate, outstate)
 
+def drawstate(variable, climstd, ensstd, color, name,
+              line, lineclimdev,
+              lineensdev=None, linehybriddev=None,
+              varens=None, lineens=None):
+    
+    line,=ax.plot(variable,z,color,label=name)
+    lineclimdev,=ax.plot(variable+climstd,z,":"+color,label=name+' clim. st.dev.')
+    ax.plot(variable-climstd,z,":"+color)
+    
+    if ens_size:
+    
+        lineensdev,=ax.plot(variable+instd,z,"--"+color,label=name+' ens. st.dev.')
+        ax.plot(variable-instd,z,"--"+color)
+        linehybriddev,=ax.plot(variable + np.sqrt(0.5*(instd**2+climstd**2)), z, "-."+color, label=name+' hybrid st.dev.')
+        ax.plot(variable - np.sqrt(0.5*(instd**2+climstd**2)), z, "-."+color)
+
+        if DrawEns:
+            for i in range(ens_size):
+                lineens,=ax.plot(varens[i],z,color,label=name+' ens. member', alpha=0.5)
+                
+                
+                
+
 
 fig,ax=plt.subplots()
 
-if DrawForecastEns:
-    for i in range(ens_size):
-        lineforecastens,=ax.plot(inchl_ens[i],z,"b",label='forecast ens. member', alpha=0.5)
+if ens_size:
+    
+    lineforecastensdev,=ax.plot(inchl+instd,z,"--b",label='forecast ens. st.dev.')
+    ax.plot(inchl-instd,z,"--b")
+    lineforecasthybriddev,=ax.plot(inchl + np.sqrt(0.5*(instd**2+climstd**2)), z, "-.b", label='forecast hybrid st.dev.')
+    ax.plot(inchl - np.sqrt(0.5*(instd**2+climstd**2)), z, "-.b")
 
-lineforecast,=ax.plot(chl[0],z,"b",label='forecast')
-lineforecastclimdev,=ax.plot(chl[0]+stdev,z,":b",label='forecast clim. st.dev.')
-ax.plot(chl[0]-stdev,z,":b")
-lineforecastensdev,=ax.plot(chl[0]+instd,z,"--b",label='forecast ens. st.dev.')
-ax.plot(chl[0]-instd,z,"--b")
-lineforecasthybriddev,=ax.plot(chl[0] + np.sqrt(0.5*(instd**2+stdev**2)), z, "-.b", label='forecast hybrid st.dev.')
-ax.plot(chl[0] - np.sqrt(0.5*(instd**2+stdev**2)), z, "-.b")
-lineanal,=ax.plot(chl[1],z,"r",label='analysis')
-#ax.plot(chl[1]+stdev,z,":r")
-#ax.plot(chl[1]-stdev,z,":r")
-ax.plot(obs,[0.0],"^g")
-ax.plot([obs-obsdev, obs+obsdev], [0.0,0.0], "g")
-ax.plot([obs-obsdev], [0.0], "|g")
-ax.plot([obs+obsdev], [0.0], "|g")
+    if DrawEns:
+        for i in range(ens_size):
+            lineforecastens,=ax.plot(inchl_ens[i],z,"b",label='forecast ens. member', alpha=0.5)
+            
+    
+
+lineforecast,=ax.plot(inchl,z,"b",label='forecast')
+lineforecastclimdev,=ax.plot(inchl+climstd,z,":b",label='forecast clim. st.dev.')
+ax.plot(inchl-climstd,z,":b")
+
+
+lineanal,=ax.plot(outchl,z,"r",label='analysis')
+lineanalclimdev,=ax.plot(outchl+climstd,z,":r",label='analysis clim. st.dev.')
+ax.plot(outchl-climstd,z,":r")
+
+ax.plot(sat,[0.0],"^g")
+ax.plot([sat-sat_std, sat+sat_std], [0.0,0.0], "g")
+ax.plot([sat-sat_std], [0.0], "|g")
+ax.plot([sat+sat_std], [0.0], "|g")
+
+lineargo,=ax.plot(argo[0],z,"g",label='argo')
+lineargodev,=ax.plot(argo[0]+argo_std[0],z,"--g",label='argo st.dev.')
+ax.plot(argo[0]-argo_std[0],z,"--g")
+
 plt.ylim([400.0,-40.0])
 limx=plt.xlim()
+
 ax.plot(limx,[0.0,0.0],"k",linewidth=1)
-lineobs,=ax.plot(obs,[0.0],"^g",label='obs')
-ax.plot([obs-obsdev, obs+obsdev], [0.0,0.0], "g")
-ax.plot([obs-obsdev], [0.0], "|g")
-ax.plot([obs+obsdev], [0.0], "|g")
+linesat,=ax.plot(sat,[0.0],"^g",label='sat')
+ax.plot([sat-sat_std, sat+sat_std], [0.0,0.0], "g")
+ax.plot([sat-sat_std], [0.0], "|g")
+ax.plot([sat+sat_std], [0.0], "|g")
 plt.xlim(limx)
 
 plt.title("Chl")
 plt.xlabel("Chl (mg/m^3)")
 plt.ylabel("Depth (m)")
 
-if DrawForecastEns:
-    plt.legend([lineforecast,lineforecastens,       lineforecastclimdev,      lineforecastensdev,      lineforecasthybriddev,    lineobs, lineanal],
-               ['forecast', "forecast ens. member", 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.', 'obs','analysis'])
+if DrawEns:
+    plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev, lineforecastens,
+                lineanal, lineanalclimdev, 
+                linesat, lineargo, lineargodev],
+               ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.', "forecast ens. member",
+                'analysis', 'analysis clim. st.dev.',
+                'sat', 'argo', 'argo st.dev.'])
 else:
-    plt.legend([lineforecast, lineforecastclimdev,    lineforecastensdev,      lineforecasthybriddev,    lineobs, lineanal],
-               ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.', 'obs','analysis'])
+    plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev,
+                lineanal, lineanalclimdev, 
+                linesat, lineargo, lineargodev],
+               ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.',
+                'analysis', 'analysis clim. st.dev.',
+                'sat', 'argo', 'argo st.dev.'])
 
 plt.savefig("postproc/chl.png")
 

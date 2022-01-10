@@ -207,7 +207,8 @@ MODULE mod_assimilation
             end if
         end do
         
-        stop "no name in varnames"
+        !stop "no name in varnames"
+        varindex=0
         
     end function
 

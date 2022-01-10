@@ -114,7 +114,7 @@ SUBROUTINE init_pdaf()
                     !   This parameter has also to be set internally in PDAF_init.
   rank_analysis_enkf = 0   ! rank to be considered for inversion of HPH
                     ! in analysis of EnKF; (0) for analysis w/o eigendecomposition
-  type_opt = 1 !0      ! Type of minimizer for 3DVar
+  type_opt = 3 !0      ! Type of minimizer for 3DVar
                     !   (1) LBFGS, (2) CG+, (3) plain CG
                     !   (12) CG+ parallel, (13) plain CG parallel
   dim_cvec = 26 !dim_ens  ! dimension of control vector (parameterized part)
@@ -128,7 +128,7 @@ SUBROUTINE init_pdaf()
 
 ! *** Which observation type to assimilate
   assim_A = .true.
-  assim_B = .false.
+  assim_B = .true.
   assim_C = .false.
 
 ! *** specifications for observations ***

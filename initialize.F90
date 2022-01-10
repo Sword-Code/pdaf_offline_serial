@@ -28,30 +28,37 @@ SUBROUTINE initialize()
     IMPLICIT NONE
     integer :: i , ios
     integer, parameter :: read_unit = 11
-
+    character(len=200) :: varname
+    
 !EOP
 
 ! *** Model specifications ***
     nx = 1 !36    ! Extent of grid in x-direction
     ny = 1 !18    ! Extent of grid in y-direction
     nz = 196 !10    ! Extent of grid in z-direction
-    nvar = 17 !2   ! number of variables
+    !nvar = 17 !2   ! number of variables
+    
+    open(unit=read_unit, file='data/init/names.txt', status='old', iostat=ios)
+        
+        ios=0
+        nvar=0
+        do while (ios==0)
+            read(read_unit, *, iostat=ios) varname
+            nvar=nvar+1
+        end do
+        nvar=nvar-1
+        
+        allocate(varnames(nvar))
+        
+        rewind(read_unit)        
+        read(read_unit, *, iostat=ios) varnames
+        if (ios /= 0) stop "Error reading file names.txt"
+
+    close(read_unit)
     
     dim_state_p   = nx * ny * nz * nvar ! State dimension (shared via MOD_OFFLINE)
     dim_eof_p = nx * ny * nz
     
-    allocate(varnames(nvar))
-    
-    open(unit=read_unit, file='data/init/names.txt', status='old', iostat=ios)
-
-        do i = 1, nvar
-            read(read_unit, *, iostat=ios) varnames(i)
-            if (ios /= 0) stop "Error reading file names.txt"
-        end do
-
-    close(read_unit)
-
-
 ! *** Screen output ***
     WRITE (*, '(1x, a)') 'INITIALIZE MODEL INFORMATION FOR PDAF OFFLINE MODE'
     WRITE (*, '(22x,a)') 'MODEL: 2D Offline Example for Tutorial'

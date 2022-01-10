@@ -130,6 +130,12 @@ SUBROUTINE init_3dvar_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
         WRITE (11, *) field(:,1, 1,varindex("P1_Chl")) +field(:,1, 1,varindex("P2_Chl")) +field(:,1, 1, varindex("P3_Chl")) +field(:,1, 1,varindex("P4_Chl"))
 
     CLOSE(11)
+    
+    OPEN(11, file = 'data/diag/state_init.txt', status = 'replace')
+ 
+        WRITE (11, *) field
+
+    CLOSE(11)
 
 
 ! ****************

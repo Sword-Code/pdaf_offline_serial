@@ -68,6 +68,9 @@ MODULE obs_B_pdafomi
   ! One can declare further variables, e.g. for file names which can
   ! be use-included in init_pdaf() and initialized there.
 
+    character(len=200), allocatable :: obsnames(:) !names of the observed variables
+    integer :: nobsvar !number of argo variables
+    integer, allocatable :: obsvar_p(:) !var number
 
 ! ***********************************************************************
 ! *** The following two data types are used in PDAFomi                ***
@@ -164,7 +167,7 @@ CONTAINS
     USE PDAFomi, &
          ONLY: PDAFomi_gather_obs
     USE mod_assimilation, &
-         ONLY: nx, ny, nz, nvar, filtertype, local_range
+         ONLY: nx, ny, nz, filtertype, local_range, varindex
 
     IMPLICIT NONE
 
@@ -173,16 +176,18 @@ CONTAINS
     INTEGER, INTENT(inout) :: dim_obs    !< Dimension of full observation vector
 
 ! *** Local variables ***
-    INTEGER :: i, j, k                      ! Counters
+    INTEGER :: i, j, k, h                      ! Counters
     INTEGER :: cnt, cnt0                 ! Counters
     INTEGER :: dim_obs_p                 ! Number of process-local observations
-    REAL, ALLOCATABLE :: obs_field(:,:,:)  ! Observation field read from file
-    REAL, ALLOCATABLE :: std_field(:,:,:)  ! Observation std field read from file
+    REAL, ALLOCATABLE :: obs_field(:,:,:,:)  ! Observation field read from file
+    REAL, ALLOCATABLE :: std_field(:,:,:,:)  ! Observation std field read from file
     REAL, ALLOCATABLE :: obs_p(:)        ! PE-local observation vector
     REAL, ALLOCATABLE :: ivar_obs_p(:)   ! PE-local inverse observation error variance
     REAL, ALLOCATABLE :: ocoord_p(:,:)   ! PE-local observation coordinates 
     CHARACTER(len=2) :: stepstr          ! String for time step
-
+    integer, parameter :: read_unit=12
+    integer :: ios
+    character(len=200) :: obsname !names of the observed variable
 
 ! *********************************************
 ! *** Initialize full observation dimension ***
@@ -200,15 +205,39 @@ CONTAINS
     ! Number of coordinates used for distance computation
     ! The distance compution starts from the first row
     thisobs%ncoord = 2
+    
+    IF (ALLOCATED(obsnames)) DEALLOCATE(obsnames)
+    
+    open(unit=read_unit, file='data/obs/argo_names.txt', status='old', iostat=ios)
+        if (ios /= 0) stop "Error opening file argo_names.txt"
+        
+        ios=0
+        nobsvar=0
+        do while (ios==0)
+            read(read_unit, *, iostat=ios) obsname
+            nobsvar=nobsvar+1
+        end do
+        nobsvar=nobsvar-1
+        
+        allocate(obsnames(nobsvar))
+        
+        rewind(read_unit)        
+        read(read_unit, *, iostat=ios) obsnames
+        
+        do i=1,nobsvar
+            write(*,*) trim(obsnames(i))
+        end do
 
+    close(read_unit)
+    if (ios /= 0) stop "Error reading file argo_names.txt"
 
 ! **********************************
 ! *** Read PE-local observations ***
 ! **********************************
 
     ! Read observation field from file
-    ALLOCATE(obs_field(nz, ny, nx))
-    ALLOCATE(std_field(nz, ny, nx))
+    ALLOCATE(obs_field(nz, ny, nx, nobsvar))
+    ALLOCATE(std_field(nz, ny, nx, nobsvar))
 
     IF (step<10) THEN
        WRITE (stepstr, '(i1)') step
@@ -216,13 +245,17 @@ CONTAINS
        WRITE (stepstr, '(i2)') step
     END IF
 
-    OPEN (12, file='data/obs/argo.txt', status='old')
-       READ (12, *) obs_field
-    CLOSE (12)
+    OPEN (read_unit, file='data/obs/argo.txt', status='old', iostat=ios)
+        if (ios /= 0) stop "Error opening file argo.txt"
+        READ (read_unit, *, iostat=ios) obs_field
+    CLOSE (read_unit)
+    if (ios /= 0) stop "Error reading file argo.txt"
     
-    OPEN (12, file='data/obs/argo_std.txt', status='old')
-       READ (12, *) std_field
-    CLOSE (12)
+    OPEN (read_unit, file='data/obs/argo_std.txt', status='old', iostat=ios)
+        if (ios /= 0) stop "Error opening file argo_std.txt"
+        READ (read_unit, *, iostat=ios) std_field
+    CLOSE (read_unit)
+    if (ios /= 0) stop "Error reading file argo_std.txt"
 
 
 ! ***********************************************************
@@ -233,18 +266,26 @@ CONTAINS
     ! *** Count valid observations that lie within the process sub-domain ***
 
     cnt = 0
-    DO j = 1, nx
-       DO i= 1, ny
-            do k=1,nz
-                IF (obs_field(k,i,j) > -999.0) cnt = cnt + 1
-            end do
-       END DO
-    END DO
+    do h=1,nobsvar
+        obsname=obsnames(h)
+        if ((trim(obsname)=="Chl").or.(varindex(obsname)>0)) then
+            DO j = 1, nx
+                DO i= 1, ny
+                    do k=1,nz
+                        IF (obs_field(k,i,j,h) > -999.0) cnt = cnt + 1
+                    end do
+                END DO
+            END DO
+        end if
+    end do
     dim_obs_p = cnt
     dim_obs = cnt
 
     IF (mype_filter==0) &
          WRITE (*,'(8x, a, i6)') '--- number of full observations', dim_obs
+         
+    IF (ALLOCATED(obsvar_p)) DEALLOCATE(obsvar_p)
+    allocate(obsvar_p(dim_obs_p))
 
 
     ! *** Initialize vector of observations on the process sub-domain ***
@@ -253,7 +294,7 @@ CONTAINS
     ! Allocate process-local observation arrays
     ALLOCATE(obs_p(dim_obs_p))
     ALLOCATE(ivar_obs_p(dim_obs_p))
-    ALLOCATE(ocoord_p(3, dim_obs_p))
+    ALLOCATE(ocoord_p(3, dim_obs_p)) !probabilmente dovrei deifinire solo 2 righe e non 3, perche' ncoord=2
 
     ! Allocate process-local index array
     ! This array has a many rows as required for the observation operator
@@ -261,24 +302,29 @@ CONTAINS
     ALLOCATE(thisobs%id_obs_p(1, dim_obs_p))
 
     cnt = 0
-    cnt0 = 0
-    DO j = 1, nx
-       DO i= 1, ny
-            do k=1, nz
-                cnt0 = cnt0 + 1
-                IF (obs_field(k, i,j) > -999.0) THEN
-                    cnt = cnt + 1
-                    thisobs%id_obs_p(1, cnt) = cnt0
-                    obs_p(cnt) = obs_field(k, i, j)
-                    ivar_obs_p(cnt) = 1.0 / std_field(k, i, j)**2
-                    ocoord_p(1, cnt) = REAL(j)
-                    ocoord_p(2, cnt) = REAL(i)
-                    ocoord_p(3, cnt) = REAL(k)
-                END IF
-            end do|
-       END DO
-    END DO
-
+    do h=1,nobsvar
+        obsname=obsnames(h)
+        if ((trim(obsname)=="Chl").or.(varindex(obsname)>0)) then
+            cnt0 = 0
+            DO j = 1, nx
+                DO i= 1, ny
+                    do k=1, nz
+                        cnt0 = cnt0 + 1
+                        IF (obs_field(k, i, j, h) > -999.0) THEN
+                            cnt = cnt + 1
+                            thisobs%id_obs_p(1, cnt) = cnt0
+                            obs_p(cnt) = obs_field(k, i, j, h)
+                            ivar_obs_p(cnt) = 1.0 / std_field(k, i, j, h)**2
+                            obsvar_p(cnt) = h
+                            ocoord_p(1, cnt) = REAL(j)
+                            ocoord_p(2, cnt) = REAL(i)
+                            ocoord_p(3, cnt) = REAL(k) !probabilmente questo non serve, perche' ncoord=2, il che significa (credo) che la distanza viene calcolata solo sull'orizzontale. 
+                        END IF
+                    end do
+                END DO
+            END DO
+        end if
+    end do
 
 ! ****************************************************************
 ! *** Define observation errors for process-local observations ***
@@ -353,6 +399,8 @@ CONTAINS
     
    integer :: i, idx
    real, ALLOCATABLE :: ostate_p(:)
+   character(len=200) :: obsname !names of the observed variable
+   
 
 ! ******************************************************
 ! *** Apply observation operator H on a state vector ***
@@ -364,11 +412,26 @@ CONTAINS
         ALLOCATE(ostate_p(thisobs%dim_obs_p))   
        
         do i=1, thisobs%dim_obs_p
+        
             idx=thisobs%id_obs_p(1, i)
-            ostate_p(i)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz) + &
-                        state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz) + &
-                        state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz) + &
-                        state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)
+            obsname=obsnames(obsvar_p(i))
+            
+            if (trim(obsname)=="Chl") then
+            
+                ostate_p(i)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz) + &
+                            state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz) + &
+                            state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz) + &
+                            state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)
+                            
+            elseif (varindex(obsname)>0) then
+            
+                ostate_p(i)=state_p(idx + (varindex(obsname)-1)*nx*ny*nz)
+                
+            else 
+                
+                stop "something went wrong in obs_op_B"
+                
+            end if
             
         end do
         
@@ -500,6 +563,7 @@ CONTAINS
 ! *** Local variables ***
     
     integer :: i, idx
+    character(len=200) :: obsname !names of the observed variable
 
 ! ******************************************************
 ! *** Apply observation operator H on a state vector ***
@@ -509,12 +573,28 @@ CONTAINS
        ! adjoint observation operator for observed grid point values
        
         state_p=0.0
-        do i=1, thisobs%dim_obs_p
+        do i=1, thisobs%dim_obs_p 
+            
             idx=thisobs%id_obs_p(1, i)
-            state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
-            state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)           
+            obsname=obsnames(obsvar_p(i))
+            
+            if (trim(obsname)=="Chl") then
+            
+                state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P1_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+                state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P2_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+                state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P3_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+                state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)=state_p(idx + (varindex("P4_Chl")-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+                            
+            elseif (varindex(obsname)>0) then
+            
+                state_p(idx + (varindex(obsname)-1)*nx*ny*nz)=state_p(idx + (varindex(obsname)-1)*nx*ny*nz)+ostate(thisobs%off_obs_f+i)
+                
+            else
+            
+                stop "something went wrong in obs_op_adj_B"
+            
+            end if
+            
         end do
        
     END IF
