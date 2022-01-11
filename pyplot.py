@@ -68,7 +68,7 @@ if ens_size:
     
     outstate_ens=np.zeros([ens_size,nvar,nz])
     for i in range(ens_size):
-        outstate_ens[i]=readstate('data/analysis/ens_{:02d}.txt'.format(i+1), [nvar,nz])
+        outstate_ens[i]=readstate('data/analysis/ens_{:02d}_ana.txt'.format(i+1), [nvar,nz])
 
     outstate, outchl, outstd, outchl_ens = ens2state(outstate_ens)
 
@@ -117,10 +117,12 @@ def writenc(outfile,statepre, statepost):
 outfile = 'postproc/state_ana.nc'
 writenc(outfile,instate, outstate)
 
-def drawstate(variable, climstd, ensstd, color, name,
-              line, lineclimdev,
-              lineensdev=None, linehybriddev=None,
-              varens=None, lineens=None):
+def drawstate(fig, ax, variable, climstd, color, name, 
+              varens=None, ensstd=None):
+    
+    lineensdev=None
+    linehybriddev=None
+    lineens=None
     
     line,=ax.plot(variable,z,color,label=name)
     lineclimdev,=ax.plot(variable+climstd,z,":"+color,label=name+' clim. st.dev.')
@@ -128,42 +130,31 @@ def drawstate(variable, climstd, ensstd, color, name,
     
     if ens_size:
     
-        lineensdev,=ax.plot(variable+instd,z,"--"+color,label=name+' ens. st.dev.')
-        ax.plot(variable-instd,z,"--"+color)
-        linehybriddev,=ax.plot(variable + np.sqrt(0.5*(instd**2+climstd**2)), z, "-."+color, label=name+' hybrid st.dev.')
-        ax.plot(variable - np.sqrt(0.5*(instd**2+climstd**2)), z, "-."+color)
+        lineensdev,=ax.plot(variable+ensstd,z,"--"+color,label=name+' ens. st.dev.')
+        ax.plot(variable-ensstd,z,"--"+color)
+        linehybriddev,=ax.plot(variable + np.sqrt(0.5*(ensstd**2+climstd**2)), z, "-."+color, label=name+' hybrid st.dev.')
+        ax.plot(variable - np.sqrt(0.5*(ensstd**2+climstd**2)), z, "-."+color)
 
         if DrawEns:
             for i in range(ens_size):
                 lineens,=ax.plot(varens[i],z,color,label=name+' ens. member', alpha=0.5)
                 
-                
-                
-
+    return (line, lineclimdev,
+            lineensdev, linehybriddev, lineens)
 
 fig,ax=plt.subplots()
 
-if ens_size:
-    
-    lineforecastensdev,=ax.plot(inchl+instd,z,"--b",label='forecast ens. st.dev.')
-    ax.plot(inchl-instd,z,"--b")
-    lineforecasthybriddev,=ax.plot(inchl + np.sqrt(0.5*(instd**2+climstd**2)), z, "-.b", label='forecast hybrid st.dev.')
-    ax.plot(inchl - np.sqrt(0.5*(instd**2+climstd**2)), z, "-.b")
+(lineforecast, lineforecastclimdev,
+ lineforecastensdev, lineforecasthybriddev, lineforecastens
+ ) = drawstate(fig, ax, inchl, climstd, "b", "forecast",
+               inchl_ens, instd)
+          
 
-    if DrawEns:
-        for i in range(ens_size):
-            lineforecastens,=ax.plot(inchl_ens[i],z,"b",label='forecast ens. member', alpha=0.5)
-            
-    
-
-lineforecast,=ax.plot(inchl,z,"b",label='forecast')
-lineforecastclimdev,=ax.plot(inchl+climstd,z,":b",label='forecast clim. st.dev.')
-ax.plot(inchl-climstd,z,":b")
-
-
-lineanal,=ax.plot(outchl,z,"r",label='analysis')
-lineanalclimdev,=ax.plot(outchl+climstd,z,":r",label='analysis clim. st.dev.')
-ax.plot(outchl-climstd,z,":r")
+(lineanal, lineanalclimdev,
+ lineanalensdev, lineanalhybriddev, lineanalens
+ )=drawstate(fig, ax, outchl, climstd, "r", "analysis",
+             outchl_ens, outstd)
+          
 
 ax.plot(sat,[0.0],"^g")
 ax.plot([sat-sat_std, sat+sat_std], [0.0,0.0], "g")
@@ -188,18 +179,26 @@ plt.title("Chl")
 plt.xlabel("Chl (mg/m^3)")
 plt.ylabel("Depth (m)")
 
-if DrawEns:
-    plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev, lineforecastens,
-                lineanal, lineanalclimdev, 
-                linesat, lineargo, lineargodev],
-               ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.', "forecast ens. member",
-                'analysis', 'analysis clim. st.dev.',
-                'sat', 'argo', 'argo st.dev.'])
+if ens_size:
+    if DrawEns:
+        plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev, lineforecastens,
+                    lineanal, lineanalclimdev, lineanalensdev, lineanalhybriddev, lineanalens,
+                    linesat, lineargo, lineargodev],
+                   ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.', "forecast ens. member",
+                    'analysis', 'analysis clim. st.dev.', 'analysis ens. st.dev.', 'analysis hybrid st.dev.', "analysis ens. member",
+                    'sat', 'argo', 'argo st.dev.'])
+    else:
+        plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev,
+                    lineanal, lineanalclimdev, lineanalensdev, lineanalhybriddev,
+                    linesat, lineargo, lineargodev],
+                   ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.',
+                    'analysis', 'analysis clim. st.dev.', 'analysis ens. st.dev.', 'analysis hybrid st.dev.',
+                    'sat', 'argo', 'argo st.dev.'])
 else:
-    plt.legend([lineforecast, lineforecastclimdev, lineforecastensdev, lineforecasthybriddev,
-                lineanal, lineanalclimdev, 
+    plt.legend([lineforecast, lineforecastclimdev,
+                lineanal, lineanalclimdev,
                 linesat, lineargo, lineargodev],
-               ['forecast', 'forecast clim. st.dev.', 'forecast ens. st.dev.', 'forecast hybrid st.dev.',
+               ['forecast', 'forecast clim. st.dev.',
                 'analysis', 'analysis clim. st.dev.',
                 'sat', 'argo', 'argo st.dev.'])
 
