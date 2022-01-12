@@ -144,16 +144,24 @@ def drawstate(fig, ax, variable, climstd, color, name,
 
 fig,ax=plt.subplots()
 
-(lineforecast, lineforecastclimdev,
- lineforecastensdev, lineforecasthybriddev, lineforecastens
- ) = drawstate(fig, ax, inchl, climstd, "b", "forecast",
-               inchl_ens, instd)
-          
-
-(lineanal, lineanalclimdev,
- lineanalensdev, lineanalhybriddev, lineanalens
- )=drawstate(fig, ax, outchl, climstd, "r", "analysis",
-             outchl_ens, outstd)
+if ens_size:
+    (lineforecast, lineforecastclimdev,
+    lineforecastensdev, lineforecasthybriddev, lineforecastens
+    ) = drawstate(fig, ax, inchl, climstd, "b", "forecast",
+                inchl_ens, instd)
+            
+    (lineanal, lineanalclimdev,
+    lineanalensdev, lineanalhybriddev, lineanalens
+    )=drawstate(fig, ax, outchl, climstd, "r", "analysis",
+                outchl_ens, outstd)
+else:
+    (lineforecast, lineforecastclimdev,
+    lineforecastensdev, lineforecasthybriddev, lineforecastens
+    ) = drawstate(fig, ax, inchl, climstd, "b", "forecast")
+            
+    (lineanal, lineanalclimdev,
+    lineanalensdev, lineanalhybriddev, lineanalens
+    )=drawstate(fig, ax, outchl, climstd, "r", "analysis")
           
 
 ax.plot(sat,[0.0],"^g")

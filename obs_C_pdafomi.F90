@@ -472,5 +472,27 @@ CONTAINS
          coords_p, HP_p, HPH)
 
   END SUBROUTINE localize_covar_C
+  
+  
+  SUBROUTINE obs_op_adj_C(dim_p, dim_obs, ostate, state_p)
+
+    USE mod_assimilation, &
+         ONLY: nx, ny, nz, varindex
+
+    IMPLICIT NONE
+
+! *** Arguments ***
+    INTEGER, INTENT(in) :: dim_p                 !< PE-local state dimension
+    INTEGER, INTENT(in) :: dim_obs               !< Dimension of full observed state (all observed fields)
+    REAL, INTENT(in)    :: ostate(dim_obs)       !< Full observed state
+    REAL, INTENT(inout) :: state_p(dim_p)        !< PE-local model state
+
+! *** Local variables ***
+    
+    integer :: i, idx
+    character(len=200) :: obsname !names of the observed variable
+    
+
+  END SUBROUTINE obs_op_adj_C
 
 END MODULE obs_C_pdafomi
